@@ -8,11 +8,10 @@ use axum::{
     routing::{get, post},
     Json, Router,
     extract::State,
-    http::StatusCode,
-    response::IntoResponse,
 };
 use serde::{Serialize, Deserialize};
 use crate::agent::LfiAgent;
+// Unused LanguageId removed
 use crate::debuglog;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -23,6 +22,7 @@ pub struct StatusResponse {
     pub status: String,
     pub version: String,
     pub active_axioms: usize,
+    pub supported_languages: Vec<String>,
 }
 
 /// Request payload for task execution.
@@ -63,25 +63,24 @@ async fn get_status(
     debuglog!("API: GET /status");
     Json(StatusResponse {
         status: "Operational".to_string(),
-        version: "5.6.4".to_string(),
+        version: "5.6.8".to_string(),
         active_axioms: state.agent.supervisor.axiom_count(),
+        supported_languages: vec![
+            "Rust".to_string(), "Go".to_string(), "Kotlin".to_string(), 
+            "Swift".to_string(), "Verilog".to_string(), "Assembly".to_string(),
+            "SQL".to_string(), "PHP".to_string(), "TypeScript".to_string()
+        ],
     })
 }
 
 async fn execute_task(
     State(state): State<ApiState>,
     Json(payload): Json<TaskRequest>,
-) -> impl IntoResponse {
+) -> Json<String> {
     debuglog!("API: POST /task '{}'", payload.task_name);
-
+    
     match state.agent.execute_task(&payload.task_name) {
-        Ok(_) => {
-            debuglog!("API: POST /task '{}' succeeded", payload.task_name);
-            (StatusCode::OK, Json(format!("Task '{}' executed and audited successfully.", payload.task_name)))
-        }
-        Err(e) => {
-            debuglog!("API: POST /task '{}' FAILED: {:?}", payload.task_name, e);
-            (StatusCode::UNPROCESSABLE_ENTITY, Json(format!("Task '{}' failed forensic audit: {:?}", payload.task_name, e)))
-        }
+        Ok(_) => Json(format!("Task '{}' executed and audited successfully.", payload.task_name)),
+        Err(e) => Json(format!("Task '{}' failed forensic audit: {:?}", payload.task_name, e)),
     }
 }

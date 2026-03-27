@@ -139,6 +139,65 @@ impl Axiom for DimensionalityAxiom {
     }
 }
 
+/// Verifies that a Vector target has balanced Hamming weight
+/// (statistical equilibrium). Detects degenerate or biased vectors
+/// that would compromise HDC algebra correctness.
+pub struct StatisticalEquilibriumAxiom {
+    /// Acceptable deviation from perfect balance (0.5).
+    /// Default: 0.02 (2%), meaning count_ones must be in [4900, 5100].
+    pub tolerance: f64,
+}
+
+impl Axiom for StatisticalEquilibriumAxiom {
+    fn id(&self) -> &str {
+        "Axiom:Statistical_Equilibrium"
+    }
+
+    fn description(&self) -> &str {
+        "Verifies vector Hamming weight is balanced (no statistical bias)"
+    }
+
+    fn verify(&self, target: &AuditTarget) -> Result<AxiomVerdict, PslError> {
+        debuglog!("StatisticalEquilibriumAxiom::verify, tolerance={}", self.tolerance);
+        match target {
+            AuditTarget::Vector(v) => {
+                let dim = v.dim();
+                let ones = v.count_ones();
+                let ratio = ones as f64 / dim as f64;
+                let deviation = (ratio - 0.5).abs();
+
+                debuglog!(
+                    "StatisticalEquilibriumAxiom: ones={}, dim={}, ratio={:.4}, dev={:.4}",
+                    ones, dim, ratio, deviation
+                );
+
+                if deviation <= self.tolerance {
+                    Ok(AxiomVerdict::pass(
+                        self.id().to_string(),
+                        1.0 - (deviation / self.tolerance),
+                        format!(
+                            "Hamming weight balanced: ones={}/{}, ratio={:.4}, deviation={:.4} <= tolerance {:.4}",
+                            ones, dim, ratio, deviation, self.tolerance
+                        ),
+                    ))
+                } else {
+                    Ok(AxiomVerdict::fail(
+                        self.id().to_string(),
+                        0.5 * (1.0 - deviation),
+                        format!(
+                            "Statistical bias detected: ones={}/{}, ratio={:.4}, deviation={:.4} > tolerance {:.4}",
+                            ones, dim, ratio, deviation, self.tolerance
+                        ),
+                    ))
+                }
+            }
+            _ => Err(PslError::InvalidAuditTarget {
+                reason: "StatisticalEquilibriumAxiom requires a Vector target".to_string(),
+            }),
+        }
+    }
+}
+
 /// Verifies that raw bytes from an external source are non-empty
 /// and within a sane size bound. Hostile data guard.
 pub struct DataIntegrityAxiom {

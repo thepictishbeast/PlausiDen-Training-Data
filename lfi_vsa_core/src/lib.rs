@@ -10,9 +10,11 @@ pub mod hdc;
 pub mod psl;
 pub mod hdlm;
 pub mod hid;
-pub mod transducers;
 pub mod agent;
 pub mod api;
+pub mod transducers;
+pub mod languages;
+pub mod coder;
 
 // --------------------------------------------------------
 // Re-export core public types for ergonomic access.
@@ -31,16 +33,25 @@ pub use psl::axiom::{Axiom, AuditTarget, AxiomVerdict};
 
 // III. HDLM (Language & Generation)
 pub use hdlm::ast::{Ast, AstNode, NodeKind};
-pub use hdlm::tier1_forensic::ForensicGenerator;
+pub use hdlm::tier1_forensic::{ForensicGenerator, ArithmeticGenerator, CodebookGenerator};
 pub use hdlm::tier2_decorative::DecorativeExpander;
 pub use hdlm::codebook::HdlmCodebook;
 
 // IV. Unified Sensorium & Interaction
 pub use hid::{HidDevice, HidCommand};
-pub use transducers::BinaryTransducer;
+pub use transducers::audio::AudioTransducer;
+pub use transducers::image::ImageTransducer;
+pub use transducers::text::TextTransducer;
+pub use transducers::binary::BinaryTransducer;
 
 // V. High-Level Orchestration
 pub use agent::LfiAgent;
+pub use coder::LfiCoder;
 
 // VI. External Interfaces
 pub use api::start_api_server;
+
+// VII. Universal Polyglot Code Engine
+pub use languages::constructs::{UniversalConstruct, Paradigm, PlatformTarget};
+pub use languages::registry::{LanguageId, LanguageRegistry, LanguageMetadata};
+pub use languages::self_improve::{SelfImproveEngine, OptimizationMetrics};

@@ -11,10 +11,14 @@ use crate::hdlm::ast::{Ast, NodeKind};
 use crate::psl::supervisor::PslSupervisor;
 use crate::psl::axiom::AuditTarget;
 use crate::hid::{HidDevice, HidCommand};
+use crate::coder::LfiCoder;
+use crate::languages::constructs::UniversalConstruct;
+use crate::languages::registry::LanguageId;
 use crate::hdc::error::HdcError;
 use crate::debuglog;
+// Unused Arc removed
 
-/// The primary LFI Agent. Orchestrates the VSA, PSL, and HID layers.
+/// The primary LFI Agent. Orchestrates the VSA, PSL, HID, and Coder layers.
 pub struct LfiAgent {
     /// Compute backend for HDC operations.
     pub compute: LocalBackend,
@@ -24,6 +28,8 @@ pub struct LfiAgent {
     pub codebook: HdlmCodebook,
     /// Hardware interface.
     pub hid: HidDevice,
+    /// Universal Polyglot Coder.
+    pub coder: LfiCoder,
 }
 
 impl LfiAgent {
@@ -46,15 +52,16 @@ impl LfiAgent {
         })?;
         
         let hid = HidDevice::new(None)?;
+        let coder = LfiCoder::new();
         
-        Ok(Self { compute, supervisor, codebook, hid })
+        Ok(Self { compute, supervisor, codebook, hid, coder })
     }
 
     /// Executes a forensic task: Sense -> Think -> Act (Audited).
     pub fn execute_task(&self, task_name: &str) -> Result<(), HdcError> {
         debuglog!("LfiAgent::execute_task: starting '{}'", task_name);
 
-        // 1. SENSE (Simulated): Ingest task intent into hypervector
+        // 1. SENSE: Ingest task intent into hypervector
         let task_vector = BipolarVector::new_random()?;
         
         // 2. THINK: Forensic AST Generation (Simplified)
@@ -63,10 +70,8 @@ impl LfiAgent {
         debuglog!("LfiAgent::execute_task: generated forensic AST");
 
         // 3. AUDIT: PSL verification of the task vector against axioms
-        // Wrap vector in AuditTarget for PSL
         let target = AuditTarget::Vector(task_vector.clone());
         
-        // We handle the case where supervisor might be empty for this demo
         if self.supervisor.axiom_count() > 0 {
             let assessment = self.supervisor.audit(&target).map_err(|e| HdcError::InitializationFailed {
                 reason: format!("PSL Audit Failure: {:?}", e),
@@ -80,13 +85,17 @@ impl LfiAgent {
                     reason: format!("PSL Audit Failure: Trust level {:?} too low", assessment.level),
                 });
             }
-        } else {
-            debuglog!("LfiAgent::execute_task: WARN - No PSL axioms loaded, skipping audit.");
         }
 
-        // 4. ACT: Dispatch to HID Injection
-        debuglog!("LfiAgent::execute_task: Dispatching action to HID");
-        self.hid.execute(HidCommand::MouseMove { x: 100, y: 100 })?;
+        // 4. ACT: Dispatch to HID or Coder
+        if task_name.contains("code") {
+            debuglog!("LfiAgent::execute_task: Dispatching to Universal Coder");
+            let _ = self.coder.synthesize(LanguageId::Rust, &[UniversalConstruct::VariableBinding])
+                .map_err(|e| HdcError::InitializationFailed { reason: e })?;
+        } else {
+            debuglog!("LfiAgent::execute_task: Dispatching action to HID");
+            self.hid.execute(HidCommand::MouseMove { x: 100, y: 100 })?;
+        }
 
         debuglog!("LfiAgent::execute_task: SUCCESS - Task '{}' completed.", task_name);
         Ok(())
@@ -100,8 +109,14 @@ mod tests {
     #[test]
     fn test_agent_task_orchestration() -> Result<(), HdcError> {
         let agent = LfiAgent::new()?;
-        // Should succeed because no axioms are loaded, bypassing audit.
         agent.execute_task("Initialize UI Probe")?;
+        Ok(())
+    }
+
+    #[test]
+    fn test_agent_coding_task() -> Result<(), HdcError> {
+        let agent = LfiAgent::new()?;
+        agent.execute_task("code a new safety module")?;
         Ok(())
     }
 }

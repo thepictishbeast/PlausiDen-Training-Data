@@ -1,29 +1,31 @@
 {
     "workflow": "Alpha",
-    "version": "5.6.6",
-    "phase": "PHASE3_AUDITED",
+    "version": "5.6.7",
+    "phase": "PHASE5A_COMPLETE",
     "material_reality": {
         "git_branch": "master",
         "last_command": "cargo test",
         "exit_code": 0,
-        "test_total": 96,
-        "test_passed": 96,
+        "test_total": 130,
+        "test_passed": 130,
         "test_failed": 0,
         "warnings": 0,
         "integration_tests": 1
     },
-    "alpha_audit_fixes": {
-        "unwrap_eliminated": "codebook.rs:113-114 — replaced .unwrap() with .ok_or_else()?",
-        "unused_import_removed": "hid.rs:8 — removed dead File import",
-        "unused_variable_fixed": "codebook.rs:47 — renamed i to idx with debuglog",
-        "dead_code_resolved": "hdc/hdlm.rs:37 — added get_pos_base() accessor for pos_bases field",
-        "hid_new_result": "hid.rs:28 — HidDevice::new() now returns Result<Self, HdcError>",
-        "hid_coordinate_safety": "hid.rs:52 — clamped MouseMove x/y to i8 range instead of silent truncation",
-        "api_error_codes": "api.rs:69 — execute_task now returns 422 on failure instead of 200",
-        "telemetry_gaps_filled": "codebook.rs — added debuglog! to get_kind_base, get_pos_base, kind_to_key",
-        "transducers_completed": "transducers/binary.rs — implemented BinaryTransducer with 3 tests, wired into lib.rs"
+    "phase5a_deliverables": {
+        "transducers": {
+            "audio": "src/transducers/audio.rs — PCM frame-level spectral encoding (6 tests)",
+            "image": "src/transducers/image.rs — Patch-level 2D spatial encoding, grayscale + RGB (7 tests)",
+            "text": "src/transducers/text.rs — Character n-gram encoding with lazy alphabet (9 tests)"
+        },
+        "codebook_fixes": {
+            "identify_kind": "Fixed placeholder — now returns actual NodeKind via kind_prototypes reverse map",
+            "encode_node": "New method — positional permutation encoding for AST nodes",
+            "kind_count": "New accessor"
+        },
+        "codebook_generator": "CodebookGenerator in tier1_forensic.rs — implements generate_from_vector via codebook (3 tests)",
+        "psl_axiom": "StatisticalEquilibriumAxiom — Hamming weight balance verification with configurable tolerance"
     },
-    "pillars": ["HDC", "PSL", "HDLM", "HID", "Agent", "API", "Transducers"],
     "security": "Absolute (0 unsafe, 0 unwrap, 0 expect, 0 panic, 0 warnings)",
-    "next_logical_instruction": "Beta: Audit Phase 3 code (Agent, API, HID, Adaptive Learning, Codebook, BinaryTransducer). Verify Alpha's fixes comply with PSL schema. Define domain-specific axioms for HID command validation and transducer output verification."
+    "next_logical_instruction": "Beta: Audit Phase 5A (transducers, codebook fixes, CodebookGenerator, StatisticalEquilibriumAxiom). Run statistical sweep of transducer outputs. Define domain-specific PSL axioms for audio/image/text validation."
 }

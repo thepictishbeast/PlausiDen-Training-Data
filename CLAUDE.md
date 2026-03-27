@@ -1,7 +1,7 @@
 # CLAUDE.md — Workflow Alpha State Document
 
 **Agent:** Claude Code (Workflow Alpha — The Architect)
-**Last Updated:** 2026-03-26
+**Last Updated:** 2026-03-27
 **Protocol Version:** 5.6
 
 ---
@@ -31,7 +31,23 @@
 - HDLM: `Ast` arena, `NodeKind` (13 variants), `ForensicGenerator`, `DecorativeExpander`
 - Tier 1: `ArithmeticGenerator` (prefix -> AST)
 - Tier 2: `InfixRenderer`, `SExprRenderer` (read-only on AST)
-- 89 tests total, all passing
+- **Beta cleared:** Phase 2 audit passed
+
+### Phase 3: Agent, API, HID, Adaptive + Alpha Audit (Commit 584d2c9)
+- Gemini scaffolded: `LfiAgent`, axum REST API, `HidDevice`, `UiElement` folding, `HdlmCodebook`, `SemanticMap`
+- Alpha audited and fixed 9 directive violations (see GEMINI_UPDATE.md)
+- `BinaryTransducer` implemented by Alpha
+- 97 tests total after audit
+- **Beta cleared:** Phase 3 audit passed
+
+### Phase 5A: Multimodal Transducers + Codebook Fixes (Uncommitted)
+- **Audio transducer:** PCM frame-level spectral encoding
+- **Image transducer:** Patch-level 2D spatial encoding (grayscale + RGB)
+- **Text transducer:** Character n-gram encoding with lazy alphabet
+- **Codebook:** Fixed `identify_kind` placeholder, added `encode_node`, `kind_count`
+- **CodebookGenerator:** Implements `generate_from_vector` via codebook reverse lookup
+- **PSL:** Added `StatisticalEquilibriumAxiom` for Hamming weight verification
+- 130 tests total, 0 warnings
 - **Beta audit:** Pending
 
 ---
@@ -39,13 +55,14 @@
 ## Current Git State
 
 ```
-448319a Merge origin/main (dependabot config) into master
+584d2c9 PHASE3: Agent, API, HID, Transducers + Alpha Forensic Audit (PUSHED)
+448319a Merge origin/main (dependabot config)
 d12feb3 PHASE2: PSL Supervisor + HDLM AST Generation Infrastructure
 15e4678 AUDIT: Phase 1 VSA Core cleared by Beta (Gemini)
 827ee4e INIT: VSA Core Baseline — Ground Zero Protocol v5.6
 ```
 
-Branches: `master` and `main` synced to same HEAD.
+Phase 5A work is uncommitted, awaiting Beta audit.
 
 ---
 
@@ -62,18 +79,10 @@ Branches: `master` and `main` synced to same HEAD.
 
 ---
 
-## Next Steps (Pending Beta Clearance of Phase 2)
+## Next Steps (Pending Beta Clearance of Phase 5A)
 
-1. **Phase 3:** HDC Item Memory / Codebook
-   - Symbol<->Vector mapping
-   - Nearest-neighbor query
-   - Codebook training from vector pairs
-   - Enables `generate_from_vector()` in HDLM
-
-2. **Phase 4:** Unified Sensorium
-   - Audio/video/image transducers
-   - Binary file projection into VSA space
-
-3. **Phase 5:** axum Web API
-   - REST/WebSocket backend daemon
-   - Hardened endpoints with PSL audit on all inputs
+1. **Phase 5B:** WebSocket API for live telemetry streaming
+2. **Phase 5C:** Frontend scaffold (Web Dashboard)
+3. **Phase 5D:** Remote GPU backend (`RemoteBackend`)
+4. **Phase 5E:** End-to-end sensorium integration test
+5. **Phase 6:** CARTA offensive probe framework
