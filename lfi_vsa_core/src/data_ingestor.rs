@@ -16,6 +16,18 @@ struct IntentPayload {
 }
 
 #[derive(Deserialize, Debug)]
+struct IFEvalPayload {
+    prompt: String,
+    constraints: Vec<String>,
+}
+
+#[derive(Deserialize, Debug)]
+struct SpiderPayload {
+    question: String,
+    query: String,
+}
+
+#[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 struct LogicPayload {
     premise: String,
@@ -138,6 +150,64 @@ impl VsaTrainer {
         Ok(())
     }
 
-    // Similar streaming logic can be applied to all other ingestion methods.
-    // For brevity and stability during rotation, we utilize the two core streams.
+    /// Ingests IFEval literalism dataset: prompt → constraint associations.
+    pub fn train_on_ifeval(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+        info!("// AUDIT: Stream-Ingesting IFEval Literalism: {}", path);
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+
+        let stream = Deserializer::from_reader(reader).into_iter::<Vec<IFEvalPayload>>();
+
+        let mut count = 0;
+        for batch_result in stream {
+            if let Ok(batch) = batch_result {
+                let total = batch.len();
+                for p in batch {
+                    // Bind the prompt to each constraint as a separate association
+                    let prompt_hv = HyperMemory::from_string(&p.prompt, DIM_PROLETARIAT);
+                    for constraint in &p.constraints {
+                        let constraint_hv = HyperMemory::from_string(constraint, DIM_PROLETARIAT);
+                        let mapping = prompt_hv.bind(&constraint_hv)?;
+                        self.memory = HyperMemory::bundle(&[self.memory.clone(), mapping])?;
+                    }
+                    count += 1;
+                    if count % 100 == 0 {
+                        info!("// AUDIT: Processed {}/{} IFEval prompts from {}", count, total, path);
+                    }
+                }
+            }
+        }
+        info!("// AUDIT: Completed ingestion of {} IFEval prompts from {}.", count, path);
+        self.memory.commit_to_disk(".vsa_core_memory.bin")?;
+        Ok(())
+    }
+
+    /// Ingests Spider SQL dataset: question → query associations.
+    pub fn train_on_spider(&mut self, path: &str) -> Result<(), Box<dyn std::error::Error>> {
+        info!("// AUDIT: Stream-Ingesting Spider SQL Logic: {}", path);
+        let file = File::open(path)?;
+        let reader = BufReader::new(file);
+
+        let stream = Deserializer::from_reader(reader).into_iter::<Vec<SpiderPayload>>();
+
+        let mut count = 0;
+        for batch_result in stream {
+            if let Ok(batch) = batch_result {
+                let total = batch.len();
+                for p in batch {
+                    let question_hv = HyperMemory::from_string(&p.question, DIM_PROLETARIAT);
+                    let query_hv = HyperMemory::from_string(&p.query, DIM_PROLETARIAT);
+                    let mapping = question_hv.bind(&query_hv)?;
+                    self.memory = HyperMemory::bundle(&[self.memory.clone(), mapping])?;
+                    count += 1;
+                    if count % 100 == 0 {
+                        info!("// AUDIT: Processed {}/{} Spider queries from {}", count, total, path);
+                    }
+                }
+            }
+        }
+        info!("// AUDIT: Completed ingestion of {} Spider queries from {}.", count, path);
+        self.memory.commit_to_disk(".vsa_core_memory.bin")?;
+        Ok(())
+    }
 }

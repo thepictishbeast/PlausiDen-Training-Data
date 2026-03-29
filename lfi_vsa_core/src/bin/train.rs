@@ -41,11 +41,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
                 "spider.json" => {
                     info!("// AUDIT: Ingesting Semantic Logic (SQL Mapping)...");
-                    // Using generic association for now
-                    trainer.train_on_intents(path.to_str().unwrap())?;
+                    trainer.train_on_spider(path.to_str().unwrap())?;
                 }
-                "ifeval.json" | "natural_questions.json" => {
-                    info!("// AUDIT: Ingesting Literalism & Research Contexts...");
+                "ifeval.json" => {
+                    info!("// AUDIT: Ingesting Literalism & Constraint Associations...");
+                    trainer.train_on_ifeval(path.to_str().unwrap())?;
+                }
+                "natural_questions.json" => {
+                    info!("// AUDIT: Ingesting Research Contexts...");
                     trainer.train_on_intents(path.to_str().unwrap())?;
                 }
                 _ => {
