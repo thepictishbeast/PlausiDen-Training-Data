@@ -50,6 +50,12 @@ pub struct SearchRequest {
     pub query: String,
 }
 
+/// POST /api/tier body
+#[derive(Deserialize)]
+pub struct TierRequest {
+    pub tier: String,
+}
+
 // ============================================================
 // WebSocket: Telemetry Stream
 // ============================================================
@@ -280,6 +286,39 @@ async fn search_handler(
 }
 
 // ============================================================
+// REST: Tier Switching
+// ============================================================
+
+async fn tier_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<TierRequest>,
+) -> impl IntoResponse {
+    let mut agent = state.agent.lock();
+    if !agent.authenticated {
+        warn!("// AUDIT: Tier switch rejected — not authenticated.");
+        return Json(json!({ "status": "rejected", "reason": "not authenticated" }));
+    }
+
+    use crate::cognition::router::IntelligenceTier;
+    let target = match req.tier.to_lowercase().as_str() {
+        "pulse" => IntelligenceTier::Pulse,
+        "bridge" => IntelligenceTier::Bridge,
+        "bigbrain" => IntelligenceTier::BigBrain,
+        _ => {
+            warn!("// AUDIT: Unknown tier requested: '{}'", req.tier);
+            return Json(json!({ "status": "error", "reason": format!("unknown tier: {}", req.tier) }));
+        }
+    };
+
+    info!("// AUDIT: Manual tier switch: {:?} -> {:?}", agent.current_tier, target);
+    agent.current_tier = target;
+    Json(json!({
+        "status": "ok",
+        "tier": format!("{:?}", agent.current_tier),
+    }))
+}
+
+// ============================================================
 // REST: QoS Compliance Report
 // ============================================================
 
@@ -331,6 +370,7 @@ pub fn create_router() -> Result<Router, Box<dyn std::error::Error>> {
         .route("/api/status", get(status_handler))
         .route("/api/facts", get(facts_handler))
         .route("/api/search", post(search_handler))
+        .route("/api/tier", post(tier_handler))
         .route("/api/qos", get(qos_handler))
         .layer(cors)
         .with_state(state))

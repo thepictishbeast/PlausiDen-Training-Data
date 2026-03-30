@@ -1,23 +1,26 @@
 // ============================================================
-// Sovereign Command Console (SCC) v3.1 — Fully Responsive Dashboard
+// Sovereign Command Console (SCC) v4.0 — Production Dashboard
 //
 // PROTOCOL: Real-time WebSocket integration with LFI Cognitive Core
 // SUBSTRATE: React, inline styles + CSS media queries (no framework)
 // LAYOUT: Mobile-first, responsive to tablet and desktop
 //
 // BREAKPOINTS:
-//   Mobile:  < 768px  — Single column, collapsible telemetry
-//   Tablet:  768-1199 — Wider chat, collapsible telemetry (3-col grid)
+//   Mobile:  < 768px  — Single column, collapsible panels
+//   Tablet:  768-1199 — Wider chat, collapsible telemetry
 //   Desktop: >= 1200  — Persistent telemetry sidebar, wide chat
 //
 // ENDPOINTS:
 //   ws://<host>:3000/ws/chat       — Bidirectional cognitive chat
 //   ws://<host>:3000/ws/telemetry  — Real-time substrate telemetry
 //   POST /api/auth                 — Sovereign key verification
+//   POST /api/tier                 — Model tier switching
 //   GET  /api/status               — Substrate status
+//   GET  /api/facts                — Knowledge facts
 //   GET  /api/qos                  — QoS compliance report
 //
 // DEBUG: console.debug() on every state change for Eruda inspector
+// FIX: Eruda FAB positioned to avoid input bar overlap
 // ============================================================
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
@@ -76,13 +79,50 @@ interface SubstrateStats {
   logic_density: number;
 }
 
+interface QosReport {
+  tier: string;
+  overall_pass: boolean;
+  checks: { name: string; pass: boolean; detail: string }[];
+}
+
+// ---- Color palette (high-contrast) ----
+const C = {
+  bg: '#08090f',
+  bgCard: '#0f1019',
+  bgInput: '#12131e',
+  bgHover: '#1a1b2e',
+  border: 'rgba(255,255,255,0.10)',
+  borderFocus: 'rgba(99,140,255,0.45)',
+  borderSubtle: 'rgba(255,255,255,0.06)',
+  text: '#e8eaf0',
+  textSecondary: '#a0a8c0',
+  textMuted: '#6b7394',
+  textDim: '#4a5072',
+  accent: '#638cff',
+  accentGlow: 'rgba(99,140,255,0.4)',
+  accentBg: 'rgba(99,140,255,0.12)',
+  accentBorder: 'rgba(99,140,255,0.25)',
+  green: '#5bf0a0',
+  greenBg: 'rgba(91,240,160,0.10)',
+  greenBorder: 'rgba(91,240,160,0.20)',
+  red: '#ff6b7a',
+  redBg: 'rgba(255,107,122,0.10)',
+  redBorder: 'rgba(255,107,122,0.20)',
+  purple: '#c49cff',
+  purpleBg: 'rgba(196,156,255,0.10)',
+  purpleBorder: 'rgba(196,156,255,0.20)',
+  yellow: '#ffd666',
+  yellowBg: 'rgba(255,214,102,0.10)',
+  font: "'SF Mono', 'Cascadia Code', 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+};
+
 // ---- Main Component ----
 const SovereignCommandConsole: React.FC = () => {
   const bp = useBreakpoint();
   const isDesktop = bp === 'desktop';
   const isTablet = bp === 'tablet';
   const isMobile = bp === 'mobile';
-  console.debug("// SCC v3.1: Component mounting, breakpoint:", bp);
+  console.debug("// SCC v4.0: Component mounting, breakpoint:", bp);
 
   // ---- State ----
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
@@ -99,6 +139,12 @@ const SovereignCommandConsole: React.FC = () => {
   const [isThinking, setIsThinking] = useState(false);
   const [expandedReasoning, setExpandedReasoning] = useState<number | null>(null);
   const [showTelemetry, setShowTelemetry] = useState(false);
+  const [showAdmin, setShowAdmin] = useState(false);
+  const [currentTier, setCurrentTier] = useState<string>('Pulse');
+  const [tierSwitching, setTierSwitching] = useState(false);
+  const [facts, setFacts] = useState<{ key: string; value: string }[]>([]);
+  const [qosReport, setQosReport] = useState<QosReport | null>(null);
+  const [adminLoading, setAdminLoading] = useState('');
   const [stats, setStats] = useState<SubstrateStats>({
     ram_available_mb: 0, cpu_temp_c: 0, vsa_orthogonality: 0.02,
     axiom_pass_rate: 1.0, is_throttled: false, logic_density: 0
@@ -126,6 +172,25 @@ const SovereignCommandConsole: React.FC = () => {
     console.debug("// SCC: Persisting auth:", isAuthenticated);
     localStorage.setItem('lfi_auth', isAuthenticated.toString());
   }, [isAuthenticated]);
+
+  // ---- Eruda FAB repositioning ----
+  // Moves the Eruda floating action button above the input bar on mobile
+  useEffect(() => {
+    const moveEruda = () => {
+      const erudaEntry = document.getElementById('eruda-entry-btn') ||
+        document.querySelector('.eruda-entry-btn') as HTMLElement;
+      if (erudaEntry) {
+        console.debug("// SCC: Repositioning Eruda FAB");
+        erudaEntry.style.bottom = isMobile ? '80px' : '20px';
+        erudaEntry.style.right = '10px';
+        erudaEntry.style.zIndex = '9998';
+      }
+    };
+    // Try immediately and after a delay (Eruda may load asynchronously)
+    moveEruda();
+    const timer = setTimeout(moveEruda, 2000);
+    return () => clearTimeout(timer);
+  }, [isMobile, isAuthenticated]);
 
   // ---- WebSocket: Chat ----
   useEffect(() => {
@@ -166,6 +231,8 @@ const SovereignCommandConsole: React.FC = () => {
               reasoning: msg.reasoning, plan: msg.plan,
               timestamp: Date.now(),
             }]);
+            // Sync tier from response
+            if (msg.tier) setCurrentTier(msg.tier);
           } else if (msg.type === 'web_result') {
             console.debug("// SCC: Web result, sources:", msg.source_count);
             setMessages(prev => [...prev, {
@@ -260,6 +327,73 @@ const SovereignCommandConsole: React.FC = () => {
     setMessages([]);
   };
 
+  // ---- Tier Switch ----
+  const handleTierSwitch = async (tier: string) => {
+    console.debug("// SCC: Switching tier to:", tier);
+    setTierSwitching(true);
+    try {
+      const url = `http://${getHost()}:3000/api/tier`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tier }),
+      });
+      const data = await res.json();
+      console.debug("// SCC: Tier switch response:", data);
+      if (data.status === 'ok') {
+        setCurrentTier(data.tier);
+        setMessages(prev => [...prev, {
+          id: Date.now(), role: 'system',
+          content: `Model tier switched to ${data.tier}.`,
+          timestamp: Date.now(),
+        }]);
+      }
+    } catch (e) {
+      console.error("// SCC: Tier switch error:", e);
+    } finally { setTierSwitching(false); }
+  };
+
+  // ---- Admin actions ----
+  const fetchFacts = async () => {
+    console.debug("// SCC: Fetching facts");
+    setAdminLoading('facts');
+    try {
+      const res = await fetch(`http://${getHost()}:3000/api/facts`);
+      const data = await res.json();
+      setFacts(data.facts || []);
+    } catch (e) { console.error("// SCC: Facts fetch error:", e); }
+    finally { setAdminLoading(''); }
+  };
+
+  const fetchQos = async () => {
+    console.debug("// SCC: Fetching QoS report");
+    setAdminLoading('qos');
+    try {
+      const res = await fetch(`http://${getHost()}:3000/api/qos`);
+      const data = await res.json();
+      setQosReport(data);
+    } catch (e) { console.error("// SCC: QoS fetch error:", e); }
+    finally { setAdminLoading(''); }
+  };
+
+  const clearChat = () => {
+    console.debug("// SCC: Clearing chat");
+    setMessages([]);
+  };
+
+  // Sync tier from status endpoint on connect
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch(`http://${getHost()}:3000/api/status`);
+        const data = await res.json();
+        if (data.tier) setCurrentTier(data.tier);
+      } catch (_) { /* server might not be up yet */ }
+    };
+    fetchStatus();
+  }, [isAuthenticated]);
+
   // ---- Send ----
   const handleSend = () => {
     const trimmed = input.trim();
@@ -285,6 +419,12 @@ const SovereignCommandConsole: React.FC = () => {
 
   const formatTime = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+  const tierColor = (t: string) => {
+    if (t.includes('BigBrain')) return C.purple;
+    if (t.includes('Bridge')) return C.yellow;
+    return C.green;
+  };
+
   // ============================================================
   // RENDER: Login
   // ============================================================
@@ -294,43 +434,43 @@ const SovereignCommandConsole: React.FC = () => {
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         minHeight: '100vh', width: '100%',
-        background: '#050508', padding: isMobile ? '24px' : '48px',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+        background: C.bg, padding: isMobile ? '24px' : '48px',
+        fontFamily: C.font,
       }}>
         <div style={{
           width: '100%', maxWidth: isDesktop ? '440px' : '400px',
-          padding: isDesktop ? '40px' : '32px',
-          background: '#0c0c14', border: '1px solid rgba(59,130,246,0.15)',
+          padding: isDesktop ? '48px' : '32px',
+          background: C.bgCard, border: `1px solid ${C.accentBorder}`,
           borderRadius: '16px',
-          boxShadow: isDesktop ? '0 8px 32px rgba(0,0,0,0.5)' : 'none',
+          boxShadow: '0 12px 48px rgba(0,0,0,0.6)',
         }}>
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '28px' }}>
             <div style={{
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              width: isDesktop ? '72px' : '64px', height: isDesktop ? '72px' : '64px',
-              borderRadius: '50%',
-              background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.2)',
+              width: '72px', height: '72px', borderRadius: '50%',
+              background: C.accentBg, border: `2px solid ${C.accentBorder}`,
+              boxShadow: `0 0 24px ${C.accentGlow}`,
             }}>
-              <svg width={isDesktop ? '32' : '28'} height={isDesktop ? '32' : '28'} viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1.5">
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="1.5">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
                 <path d="M12 8v4M12 16h.01"/>
               </svg>
             </div>
           </div>
           <h1 style={{
-            fontSize: isDesktop ? '15px' : '13px', fontWeight: 700, textAlign: 'center',
-            letterSpacing: '0.25em', textTransform: 'uppercase',
-            color: '#93c5fd', marginBottom: '8px',
+            fontSize: '16px', fontWeight: 800, textAlign: 'center',
+            letterSpacing: '0.2em', textTransform: 'uppercase',
+            color: C.text, marginBottom: '6px',
           }}>Sovereign Command Console</h1>
-          <p style={{ fontSize: isDesktop ? '13px' : '12px', textAlign: 'center', color: '#475569', marginBottom: '28px' }}>
+          <p style={{ fontSize: '13px', textAlign: 'center', color: C.textMuted, marginBottom: '32px' }}>
             Enter your sovereign key to authenticate
           </p>
           <input
             type="password" autoFocus
             style={{
               width: '100%', padding: '14px 16px',
-              background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(59,130,246,0.2)',
-              borderRadius: '10px', outline: 'none', color: '#93c5fd',
+              background: 'rgba(0,0,0,0.3)', border: `1px solid ${C.accentBorder}`,
+              borderRadius: '10px', outline: 'none', color: C.text,
               fontSize: '16px', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '12px',
             }}
             placeholder="AUTH_KEY"
@@ -340,22 +480,29 @@ const SovereignCommandConsole: React.FC = () => {
           />
           {authError && (
             <p style={{
-              color: '#ef4444', fontSize: '13px', textAlign: 'center', marginBottom: '12px',
-              padding: '8px', background: 'rgba(239,68,68,0.08)', borderRadius: '8px',
+              color: C.red, fontSize: '13px', textAlign: 'center', marginBottom: '12px',
+              padding: '10px', background: C.redBg, borderRadius: '8px',
+              border: `1px solid ${C.redBorder}`,
             }}>{authError}</p>
           )}
           <button onClick={handleLogin} disabled={authLoading || !password}
             style={{
               width: '100%', padding: '14px',
-              background: 'rgba(59,130,246,0.15)', border: '1px solid rgba(59,130,246,0.3)',
-              borderRadius: '10px', color: '#93c5fd', fontSize: '14px', fontWeight: 700,
+              background: C.accentBg, border: `1px solid ${C.accentBorder}`,
+              borderRadius: '10px', color: C.accent, fontSize: '14px', fontWeight: 800,
               textTransform: 'uppercase', letterSpacing: '0.15em',
               cursor: authLoading ? 'wait' : 'pointer', fontFamily: 'inherit',
               opacity: !password ? 0.4 : 1,
+              transition: 'all 0.2s',
             }}>
             {authLoading ? 'Authenticating...' : 'Initiate Link'}
           </button>
         </div>
+        <style>{`
+          * { box-sizing: border-box; }
+          body { margin: 0; padding: 0; }
+          input::placeholder { color: ${C.textDim}; }
+        `}</style>
       </div>
     );
   }
@@ -365,83 +512,133 @@ const SovereignCommandConsole: React.FC = () => {
   // ============================================================
   console.debug("// SCC: Rendering console, msgs:", messages.length, "bp:", bp);
 
-  // Responsive dimension helpers
-  const chatMaxWidth = isDesktop ? '860px' : isTablet ? '680px' : '720px';
-  const chatPadding = isDesktop ? '24px 32px' : '16px';
-  const headerPadding = isDesktop ? '12px 24px' : '10px 16px';
-  const sidebarWidth = 280;
-  const userBubbleMaxWidth = isDesktop ? '65%' : '85%';
+  const chatMaxWidth = isDesktop ? '880px' : isTablet ? '700px' : '100%';
+  const chatPadding = isDesktop ? '24px 32px' : isTablet ? '20px 24px' : '12px 14px';
+  const sidebarWidth = 300;
+  const userBubbleMaxWidth = isDesktop ? '70%' : '88%';
 
-  // Telemetry stats data (shared between inline panel and sidebar)
+  // Telemetry stats data
   const telemetryCards = [
-    { label: 'RAM', value: `${stats.ram_available_mb}`, unit: 'MB', color: '#93c5fd', bg: 'rgba(59,130,246,0.06)', border: 'rgba(59,130,246,0.1)' },
-    { label: 'CPU', value: `${stats.cpu_temp_c.toFixed(0)}`, unit: '\u00B0C', color: stats.cpu_temp_c > 65 ? '#f87171' : '#4ade80', bg: stats.cpu_temp_c > 65 ? 'rgba(239,68,68,0.06)' : 'rgba(34,197,94,0.06)', border: stats.cpu_temp_c > 65 ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)' },
-    { label: 'VSA Health', value: `${(100 - stats.vsa_orthogonality * 100).toFixed(1)}`, unit: '%', color: '#c084fc', bg: 'rgba(168,85,247,0.06)', border: 'rgba(168,85,247,0.1)' },
-    { label: 'PSL Axioms', value: `${(stats.axiom_pass_rate * 100).toFixed(0)}`, unit: '%', color: '#4ade80', bg: 'rgba(34,197,94,0.06)', border: 'rgba(34,197,94,0.1)' },
+    { label: 'RAM', value: `${stats.ram_available_mb}`, unit: 'MB', color: C.accent, bg: C.accentBg, border: C.accentBorder },
+    { label: 'CPU', value: `${stats.cpu_temp_c.toFixed(0)}`, unit: '\u00B0C', color: stats.cpu_temp_c > 65 ? C.red : C.green, bg: stats.cpu_temp_c > 65 ? C.redBg : C.greenBg, border: stats.cpu_temp_c > 65 ? C.redBorder : C.greenBorder },
+    { label: 'VSA', value: `${(100 - stats.vsa_orthogonality * 100).toFixed(1)}`, unit: '%', color: C.purple, bg: C.purpleBg, border: C.purpleBorder },
+    { label: 'PSL', value: `${(stats.axiom_pass_rate * 100).toFixed(0)}`, unit: '%', color: C.green, bg: C.greenBg, border: C.greenBorder },
   ];
 
-  // Telemetry card renderer
   const renderTelemetryCard = (s: typeof telemetryCards[0], compact = false) => (
     <div key={s.label} style={{
-      padding: compact ? '8px 10px' : '10px 12px', borderRadius: '8px',
+      padding: compact ? '10px 12px' : '12px 14px', borderRadius: '10px',
       background: s.bg, border: `1px solid ${s.border}`,
     }}>
-      <div style={{ fontSize: compact ? '9px' : '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase', marginBottom: compact ? '2px' : '4px' }}>{s.label}</div>
-      <div style={{ fontSize: compact ? '16px' : '18px', fontWeight: 800, color: s.color }}>
-        {s.value}<span style={{ fontSize: '11px', color: '#475569' }}>{s.unit}</span>
+      <div style={{ fontSize: '10px', color: C.textMuted, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: compact ? '3px' : '5px' }}>{s.label}</div>
+      <div style={{ fontSize: compact ? '18px' : '20px', fontWeight: 800, color: s.color }}>
+        {s.value}<span style={{ fontSize: '11px', color: C.textDim, marginLeft: '2px' }}>{s.unit}</span>
       </div>
     </div>
   );
 
-  // Desktop telemetry sidebar
+  // Desktop sidebar
   const renderSidebar = () => (
     <aside style={{
       width: `${sidebarWidth}px`, flexShrink: 0,
-      background: '#08080d', borderLeft: '1px solid rgba(255,255,255,0.06)',
+      background: C.bgCard, borderLeft: `1px solid ${C.border}`,
       display: 'flex', flexDirection: 'column', overflowY: 'auto',
     }}>
-      <div style={{
-        padding: '16px', borderBottom: '1px solid rgba(255,255,255,0.04)',
-      }}>
-        <div style={{
-          fontSize: '10px', fontWeight: 800, color: '#64748b',
-          textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '12px',
-        }}>Substrate Telemetry</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+      {/* Telemetry */}
+      <div style={{ padding: '20px', borderBottom: `1px solid ${C.borderSubtle}` }}>
+        <div style={{ fontSize: '11px', fontWeight: 800, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '14px' }}>
+          Substrate Telemetry
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
           {telemetryCards.map(s => renderTelemetryCard(s, true))}
         </div>
         {stats.is_throttled && (
           <div style={{
-            marginTop: '8px', padding: '8px', background: 'rgba(239,68,68,0.1)',
-            border: '1px solid rgba(239,68,68,0.2)', borderRadius: '6px',
-            textAlign: 'center', fontSize: '11px', fontWeight: 700, color: '#f87171', textTransform: 'uppercase',
+            marginTop: '10px', padding: '10px', background: C.redBg,
+            border: `1px solid ${C.redBorder}`, borderRadius: '8px',
+            textAlign: 'center', fontSize: '11px', fontWeight: 800, color: C.red, textTransform: 'uppercase',
+            letterSpacing: '0.08em',
           }}>Thermal Throttle</div>
         )}
       </div>
-      {/* Extra sidebar info — logic density, throttle status */}
-      <div style={{ padding: '16px' }}>
-        <div style={{
-          fontSize: '10px', fontWeight: 800, color: '#64748b',
-          textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '12px',
-        }}>Status</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-            <span style={{ color: '#64748b' }}>Throttled</span>
-            <span style={{ color: stats.is_throttled ? '#f87171' : '#4ade80', fontWeight: 700 }}>
-              {stats.is_throttled ? 'YES' : 'NO'}
-            </span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-            <span style={{ color: '#64748b' }}>Logic Density</span>
-            <span style={{ color: '#c084fc', fontWeight: 700 }}>{stats.logic_density.toFixed(2)}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-            <span style={{ color: '#64748b' }}>Connection</span>
-            <span style={{ color: isConnected ? '#4ade80' : '#f87171', fontWeight: 700 }}>
-              {isConnected ? 'LIVE' : 'DOWN'}
-            </span>
-          </div>
+      {/* Status */}
+      <div style={{ padding: '20px', borderBottom: `1px solid ${C.borderSubtle}` }}>
+        <div style={{ fontSize: '11px', fontWeight: 800, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '14px' }}>
+          Status
         </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {[
+            { label: 'Connection', value: isConnected ? 'LIVE' : 'DOWN', color: isConnected ? C.green : C.red },
+            { label: 'Tier', value: currentTier, color: tierColor(currentTier) },
+            { label: 'Throttled', value: stats.is_throttled ? 'YES' : 'NO', color: stats.is_throttled ? C.red : C.green },
+            { label: 'Logic Density', value: stats.logic_density.toFixed(3), color: C.purple },
+          ].map(row => (
+            <div key={row.label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+              <span style={{ color: C.textMuted }}>{row.label}</span>
+              <span style={{ color: row.color, fontWeight: 700 }}>{row.value}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* Admin actions */}
+      <div style={{ padding: '20px' }}>
+        <div style={{ fontSize: '11px', fontWeight: 800, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '14px' }}>
+          Administration
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <button onClick={fetchFacts} disabled={adminLoading === 'facts'} style={{
+            padding: '10px', fontSize: '12px', fontWeight: 700, color: C.accent,
+            background: C.accentBg, border: `1px solid ${C.accentBorder}`, borderRadius: '8px',
+            cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.05em',
+          }}>{adminLoading === 'facts' ? 'Loading...' : 'View Facts'}</button>
+          <button onClick={fetchQos} disabled={adminLoading === 'qos'} style={{
+            padding: '10px', fontSize: '12px', fontWeight: 700, color: C.purple,
+            background: C.purpleBg, border: `1px solid ${C.purpleBorder}`, borderRadius: '8px',
+            cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.05em',
+          }}>{adminLoading === 'qos' ? 'Loading...' : 'QoS Report'}</button>
+          <button onClick={clearChat} style={{
+            padding: '10px', fontSize: '12px', fontWeight: 700, color: C.textMuted,
+            background: 'transparent', border: `1px solid ${C.border}`, borderRadius: '8px',
+            cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase', letterSpacing: '0.05em',
+          }}>Clear Chat</button>
+        </div>
+        {/* Facts display */}
+        {facts.length > 0 && (
+          <div style={{ marginTop: '14px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: C.textMuted, marginBottom: '8px', textTransform: 'uppercase' }}>
+              Knowledge Facts ({facts.length})
+            </div>
+            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {facts.map((f, i) => (
+                <div key={i} style={{ fontSize: '11px', padding: '6px 8px', borderBottom: `1px solid ${C.borderSubtle}` }}>
+                  <span style={{ color: C.accent, fontWeight: 700 }}>{f.key}</span>
+                  <span style={{ color: C.textDim }}> = </span>
+                  <span style={{ color: C.textSecondary }}>{f.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+        {/* QoS display */}
+        {qosReport && (
+          <div style={{ marginTop: '14px' }}>
+            <div style={{ fontSize: '10px', fontWeight: 700, color: C.textMuted, marginBottom: '8px', textTransform: 'uppercase' }}>
+              QoS Report
+            </div>
+            <div style={{
+              padding: '10px', borderRadius: '8px', fontSize: '11px',
+              background: qosReport.overall_pass ? C.greenBg : C.redBg,
+              border: `1px solid ${qosReport.overall_pass ? C.greenBorder : C.redBorder}`,
+              color: qosReport.overall_pass ? C.green : C.red,
+              fontWeight: 700,
+            }}>
+              {qosReport.overall_pass ? 'ALL CHECKS PASS' : 'COMPLIANCE ISSUES'}
+            </div>
+            <pre style={{ fontSize: '10px', color: C.textMuted, whiteSpace: 'pre-wrap', marginTop: '8px', lineHeight: '1.5' }}>
+              {JSON.stringify(qosReport, null, 2).slice(0, 500)}
+            </pre>
+          </div>
+        )}
       </div>
     </aside>
   );
@@ -449,164 +646,342 @@ const SovereignCommandConsole: React.FC = () => {
   return (
     <div style={{
       display: 'flex', flexDirection: 'column', height: '100vh', width: '100%',
-      background: '#050508', color: '#e0e0e0',
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+      background: C.bg, color: C.text,
+      fontFamily: C.font,
       overflow: 'hidden',
     }}>
-      {/* HEADER */}
+      {/* ========== HEADER ========== */}
       <header style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: headerPadding, background: '#0a0a10',
-        borderBottom: '1px solid rgba(255,255,255,0.06)',
-        flexShrink: 0, zIndex: 50, minHeight: '48px',
+        padding: isDesktop ? '10px 24px' : '8px 14px',
+        background: C.bgCard,
+        borderBottom: `1px solid ${C.border}`,
+        flexShrink: 0, zIndex: 50, minHeight: isMobile ? '50px' : '52px',
       }}>
+        {/* Left: branding + status */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* SCC logo mark */}
           <div style={{
-            width: '10px', height: '10px', borderRadius: '50%',
-            background: isConnected ? '#3b82f6' : '#ef4444',
-            boxShadow: isConnected ? '0 0 8px rgba(59,130,246,0.5)' : '0 0 8px rgba(239,68,68,0.5)',
-          }} />
-          <span style={{
-            fontSize: '12px', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase',
-            color: isConnected ? '#93c5fd' : '#f87171',
-          }}>{isConnected ? 'SCC Online' : 'Disconnected'}</span>
-          {/* Desktop: show extra status in header */}
+            width: '28px', height: '28px', borderRadius: '8px',
+            background: C.accentBg, border: `1px solid ${C.accentBorder}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            flexShrink: 0,
+          }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <div>
+            <div style={{
+              fontSize: '13px', fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase',
+              color: C.text, lineHeight: 1,
+            }}>SCC</div>
+            <div style={{
+              fontSize: '10px', color: isConnected ? C.green : C.red,
+              fontWeight: 700, letterSpacing: '0.05em', marginTop: '2px',
+            }}>
+              {isConnected ? 'ONLINE' : 'OFFLINE'}
+            </div>
+          </div>
+          {/* Desktop: inline stats */}
           {isDesktop && (
-            <span style={{ fontSize: '11px', color: '#334155', marginLeft: '8px' }}>
-              | {stats.ram_available_mb}MB RAM | {stats.cpu_temp_c.toFixed(0)}{'\u00B0'}C
-            </span>
+            <div style={{ display: 'flex', gap: '16px', marginLeft: '16px', fontSize: '12px', color: C.textDim }}>
+              <span>{stats.ram_available_mb} MB</span>
+              <span>{stats.cpu_temp_c.toFixed(0)}{'\u00B0'}C</span>
+              <span style={{ color: tierColor(currentTier) }}>{currentTier}</span>
+            </div>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Stats toggle only on mobile/tablet — desktop uses sidebar */}
+
+        {/* Right: controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px' }}>
+          {/* Tier selector */}
+          <select
+            value={currentTier}
+            disabled={tierSwitching}
+            onChange={(e) => handleTierSwitch(e.target.value)}
+            style={{
+              padding: isMobile ? '5px 20px 5px 8px' : '6px 28px 6px 10px',
+              fontSize: '11px', fontWeight: 700,
+              background: C.bgInput,
+              border: `1px solid ${C.purpleBorder}`,
+              borderRadius: '8px',
+              color: C.purple,
+              cursor: tierSwitching ? 'wait' : 'pointer',
+              fontFamily: 'inherit',
+              textTransform: 'uppercase',
+              appearance: 'none',
+              WebkitAppearance: 'none',
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cpath fill='%23c49cff' d='M0 2l4 4 4-4z'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: `right ${isMobile ? '6px' : '10px'} center`,
+            }}
+          >
+            <option value="Pulse">Pulse</option>
+            <option value="Bridge">Bridge</option>
+            <option value="BigBrain">BigBrain</option>
+          </select>
+
+          {/* Stats toggle (mobile/tablet) */}
           {!isDesktop && (
             <button onClick={() => setShowTelemetry(!showTelemetry)} style={{
-              padding: '6px 10px', fontSize: '11px', fontWeight: 700,
-              background: showTelemetry ? 'rgba(59,130,246,0.15)' : 'transparent',
-              border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px',
-              color: '#94a3b8', cursor: 'pointer', fontFamily: 'inherit',
-              textTransform: 'uppercase',
+              padding: '5px 10px', fontSize: '11px', fontWeight: 700,
+              background: showTelemetry ? C.accentBg : 'transparent',
+              border: `1px solid ${showTelemetry ? C.accentBorder : C.border}`, borderRadius: '8px',
+              color: showTelemetry ? C.accent : C.textMuted,
+              cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase',
             }}>Stats</button>
           )}
+
+          {/* Admin toggle (mobile/tablet) */}
+          {!isDesktop && (
+            <button onClick={() => setShowAdmin(!showAdmin)} style={{
+              padding: '5px 10px', fontSize: '11px', fontWeight: 700,
+              background: showAdmin ? C.purpleBg : 'transparent',
+              border: `1px solid ${showAdmin ? C.purpleBorder : C.border}`, borderRadius: '8px',
+              color: showAdmin ? C.purple : C.textMuted,
+              cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase',
+            }}>Admin</button>
+          )}
+
           <button onClick={handleLogout} style={{
-            padding: '6px 10px', fontSize: '11px', fontWeight: 700,
-            background: 'transparent', border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '6px', color: '#64748b', cursor: 'pointer', fontFamily: 'inherit',
+            padding: '5px 10px', fontSize: '11px', fontWeight: 700,
+            background: 'transparent', border: `1px solid ${C.border}`,
+            borderRadius: '8px', color: C.textDim, cursor: 'pointer', fontFamily: 'inherit',
             textTransform: 'uppercase',
           }}>Logout</button>
         </div>
       </header>
 
-      {/* TELEMETRY PANEL — mobile/tablet only (collapsible) */}
+      {/* ========== TELEMETRY PANEL (mobile/tablet, collapsible) ========== */}
       {!isDesktop && showTelemetry && (
         <div style={{
           display: 'grid', gridTemplateColumns: isTablet ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)',
-          gap: '8px', padding: '12px 16px', background: '#08080d',
-          borderBottom: '1px solid rgba(255,255,255,0.04)', flexShrink: 0,
+          gap: '8px', padding: '12px 14px', background: C.bgCard,
+          borderBottom: `1px solid ${C.border}`, flexShrink: 0,
         }}>
           {telemetryCards.map(s => renderTelemetryCard(s))}
           {stats.is_throttled && (
             <div style={{
-              gridColumn: '1 / -1', padding: '10px', background: 'rgba(239,68,68,0.1)',
-              border: '1px solid rgba(239,68,68,0.2)', borderRadius: '8px',
-              textAlign: 'center', fontSize: '12px', fontWeight: 700, color: '#f87171', textTransform: 'uppercase',
+              gridColumn: '1 / -1', padding: '10px', background: C.redBg,
+              border: `1px solid ${C.redBorder}`, borderRadius: '8px',
+              textAlign: 'center', fontSize: '12px', fontWeight: 800, color: C.red, textTransform: 'uppercase',
             }}>Thermal Throttle Active</div>
           )}
         </div>
       )}
 
-      {/* BODY: Chat + optional Desktop Sidebar */}
+      {/* ========== ADMIN PANEL (mobile/tablet, collapsible) ========== */}
+      {!isDesktop && showAdmin && (
+        <div style={{
+          padding: '14px', background: C.bgCard,
+          borderBottom: `1px solid ${C.border}`, flexShrink: 0,
+        }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button onClick={fetchFacts} disabled={adminLoading === 'facts'} style={{
+              padding: '8px 14px', fontSize: '11px', fontWeight: 700, color: C.accent,
+              background: C.accentBg, border: `1px solid ${C.accentBorder}`, borderRadius: '8px',
+              cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase',
+            }}>{adminLoading === 'facts' ? 'Loading...' : 'Facts'}</button>
+            <button onClick={fetchQos} disabled={adminLoading === 'qos'} style={{
+              padding: '8px 14px', fontSize: '11px', fontWeight: 700, color: C.purple,
+              background: C.purpleBg, border: `1px solid ${C.purpleBorder}`, borderRadius: '8px',
+              cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase',
+            }}>{adminLoading === 'qos' ? 'Loading...' : 'QoS'}</button>
+            <button onClick={clearChat} style={{
+              padding: '8px 14px', fontSize: '11px', fontWeight: 700, color: C.textMuted,
+              background: 'transparent', border: `1px solid ${C.border}`, borderRadius: '8px',
+              cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase',
+            }}>Clear Chat</button>
+          </div>
+          {/* Inline results */}
+          {facts.length > 0 && (
+            <div style={{ marginTop: '10px', maxHeight: '150px', overflowY: 'auto', fontSize: '11px' }}>
+              {facts.map((f, i) => (
+                <div key={i} style={{ padding: '4px 0', borderBottom: `1px solid ${C.borderSubtle}` }}>
+                  <span style={{ color: C.accent, fontWeight: 700 }}>{f.key}</span>
+                  <span style={{ color: C.textDim }}> = </span>
+                  <span style={{ color: C.textSecondary }}>{f.value}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {qosReport && (
+            <pre style={{ marginTop: '10px', fontSize: '10px', color: C.textMuted, whiteSpace: 'pre-wrap', maxHeight: '150px', overflowY: 'auto' }}>
+              {JSON.stringify(qosReport, null, 2).slice(0, 400)}
+            </pre>
+          )}
+        </div>
+      )}
+
+      {/* ========== BODY: Chat + Sidebar ========== */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         {/* CHAT AREA */}
         <main style={{ flex: 1, overflowY: 'auto', padding: chatPadding, WebkitOverflowScrolling: 'touch' as any }}>
           <div style={{ maxWidth: chatMaxWidth, margin: '0 auto' }}>
+            {/* Empty state */}
             {messages.length === 0 && (
-              <div style={{ textAlign: 'center', padding: isDesktop ? '80px 24px' : '48px 24px', color: '#334155' }}>
-                <div style={{ fontSize: isDesktop ? '48px' : '32px', marginBottom: '16px', opacity: 0.3 }}>&#9670;</div>
-                <p style={{ fontSize: isDesktop ? '16px' : '14px', fontWeight: 600 }}>Sovereign Command Console</p>
-                <p style={{ fontSize: isDesktop ? '13px' : '12px', marginTop: '8px', color: '#1e293b' }}>Type a message to begin</p>
+              <div style={{ textAlign: 'center', padding: isDesktop ? '100px 24px' : '60px 24px' }}>
+                <div style={{
+                  width: '64px', height: '64px', borderRadius: '16px',
+                  background: C.accentBg, border: `2px solid ${C.accentBorder}`,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  marginBottom: '20px', boxShadow: `0 0 32px ${C.accentGlow}`,
+                }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={C.accent} strokeWidth="1.5">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                    <path d="M12 8v4M12 16h.01"/>
+                  </svg>
+                </div>
+                <p style={{ fontSize: '18px', fontWeight: 700, color: C.text, margin: '0 0 8px' }}>Sovereign Command Console</p>
+                <p style={{ fontSize: '13px', color: C.textMuted, margin: 0 }}>
+                  Type a message to begin. I can reason, plan, search, and code.
+                </p>
               </div>
             )}
 
+            {/* Messages */}
             {messages.map((msg) => (
-              <div key={msg.id} style={{ marginBottom: isDesktop ? '20px' : '16px' }}>
+              <div key={msg.id} style={{ marginBottom: isDesktop ? '20px' : '14px' }}>
+                {/* System messages */}
                 {msg.role === 'system' && (
-                  <div style={{ textAlign: 'center', padding: '6px 12px', fontSize: '12px', color: '#475569', fontStyle: 'italic' }}>
+                  <div style={{
+                    textAlign: 'center', padding: '8px 16px', fontSize: '12px',
+                    color: C.textMuted, fontStyle: 'italic',
+                  }}>
                     {msg.content}
                   </div>
                 )}
+
+                {/* Web results */}
                 {msg.role === 'web' && (
                   <div style={{
-                    padding: isDesktop ? '16px 20px' : '14px', borderRadius: '12px',
-                    background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
+                    padding: '14px 16px', borderRadius: '12px',
+                    background: C.greenBg, border: `1px solid ${C.greenBorder}`,
                     maxWidth: isDesktop ? '75%' : '100%',
                   }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#10b981', textTransform: 'uppercase', marginBottom: '8px' }}>Web Intelligence</div>
-                    <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontSize: isDesktop ? '14px' : '13px', lineHeight: '1.6', color: '#a7f3d0', margin: 0 }}>{msg.content}</pre>
+                    <div style={{ fontSize: '11px', fontWeight: 800, color: C.green, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '8px' }}>
+                      Web Intelligence
+                    </div>
+                    <pre style={{
+                      whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                      fontSize: '13px', lineHeight: '1.6', color: '#b8f0d0', margin: 0,
+                    }}>{msg.content}</pre>
                   </div>
                 )}
+
+                {/* User messages */}
                 {msg.role === 'user' && (
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <div style={{
-                      maxWidth: userBubbleMaxWidth, padding: isDesktop ? '14px 20px' : '12px 16px',
-                      background: 'rgba(59,130,246,0.12)', border: '1px solid rgba(59,130,246,0.2)',
-                      borderRadius: '16px 16px 4px 16px', fontSize: '14px', lineHeight: '1.5',
-                      color: '#bfdbfe', wordBreak: 'break-word',
+                      maxWidth: userBubbleMaxWidth, padding: '12px 16px',
+                      background: C.accentBg, border: `1px solid ${C.accentBorder}`,
+                      borderRadius: '16px 16px 4px 16px', fontSize: '14px', lineHeight: '1.6',
+                      color: '#d0deff', wordBreak: 'break-word',
                     }}>
                       {msg.content}
-                      <div style={{ fontSize: '10px', color: '#334155', marginTop: '6px', textAlign: 'right' }}>{formatTime(msg.timestamp)}</div>
+                      <div style={{ fontSize: '10px', color: C.textDim, marginTop: '6px', textAlign: 'right' }}>
+                        {formatTime(msg.timestamp)}
+                      </div>
                     </div>
                   </div>
                 )}
+
+                {/* Assistant messages */}
                 {msg.role === 'assistant' && (
                   <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-                    <div style={{ maxWidth: isDesktop ? '80%' : '95%', width: '100%' }}>
+                    <div style={{ maxWidth: isDesktop ? '80%' : '96%', width: '100%' }}>
                       {/* Badges */}
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '6px' }}>
-                        {msg.tier && <span style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 700, background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.15)', borderRadius: '4px', color: '#60a5fa', textTransform: 'uppercase' }}>{msg.tier}</span>}
-                        {msg.mode && <span style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 700, background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.15)', borderRadius: '4px', color: '#a78bfa', textTransform: 'uppercase' }}>{msg.mode}</span>}
-                        {msg.confidence !== undefined && <span style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 700, background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.15)', borderRadius: '4px', color: msg.confidence > 0.7 ? '#4ade80' : '#fbbf24' }}>{(msg.confidence * 100).toFixed(0)}%</span>}
+                        {msg.tier && (
+                          <span style={{
+                            padding: '3px 10px', fontSize: '10px', fontWeight: 800,
+                            background: C.accentBg, border: `1px solid ${C.accentBorder}`,
+                            borderRadius: '6px', color: C.accent, textTransform: 'uppercase',
+                            letterSpacing: '0.06em',
+                          }}>{msg.tier}</span>
+                        )}
+                        {msg.mode && (
+                          <span style={{
+                            padding: '3px 10px', fontSize: '10px', fontWeight: 800,
+                            background: C.purpleBg, border: `1px solid ${C.purpleBorder}`,
+                            borderRadius: '6px', color: C.purple, textTransform: 'uppercase',
+                            letterSpacing: '0.06em',
+                          }}>{msg.mode}</span>
+                        )}
+                        {msg.confidence !== undefined && (
+                          <span style={{
+                            padding: '3px 10px', fontSize: '10px', fontWeight: 800,
+                            background: msg.confidence > 0.7 ? C.greenBg : C.yellowBg,
+                            border: `1px solid ${msg.confidence > 0.7 ? C.greenBorder : 'rgba(255,214,102,0.20)'}`,
+                            borderRadius: '6px',
+                            color: msg.confidence > 0.7 ? C.green : C.yellow,
+                          }}>{(msg.confidence * 100).toFixed(0)}%</span>
+                        )}
                       </div>
+
                       {/* Response body */}
                       <div style={{
-                        padding: isDesktop ? '16px 20px' : '14px 16px', background: '#0c0c14',
-                        border: '1px solid rgba(255,255,255,0.06)',
-                        borderRadius: '4px 16px 16px 16px', fontSize: '14px', lineHeight: '1.6',
-                        color: '#d1d5db', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                        padding: '14px 18px',
+                        background: C.bgCard,
+                        border: `1px solid ${C.border}`,
+                        borderRadius: '4px 16px 16px 16px',
+                        fontSize: '14px', lineHeight: '1.65',
+                        color: C.text,
+                        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
                       }}>
                         {msg.content}
-                        <div style={{ fontSize: '10px', color: '#334155', marginTop: '8px' }}>
+                        <div style={{ fontSize: '10px', color: C.textDim, marginTop: '8px' }}>
                           {formatTime(msg.timestamp)}
-                          {msg.intent && <span style={{ marginLeft: '8px', color: '#475569' }}>{msg.intent.split('{')[0]}</span>}
+                          {msg.intent && (
+                            <span style={{ marginLeft: '10px', color: C.textMuted }}>
+                              {msg.intent.split('{')[0]}
+                            </span>
+                          )}
                         </div>
                       </div>
-                      {/* Reasoning */}
+
+                      {/* Reasoning toggle */}
                       {msg.reasoning && msg.reasoning.length > 0 && (
-                        <div style={{ marginTop: '6px' }}>
-                          <button onClick={() => setExpandedReasoning(expandedReasoning === msg.id ? null : msg.id)} style={{
-                            display: 'flex', alignItems: 'center', gap: '6px',
-                            padding: '6px 10px', fontSize: '11px', fontWeight: 700,
-                            color: '#64748b', background: 'transparent',
-                            border: '1px solid rgba(255,255,255,0.06)', borderRadius: '6px',
-                            cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase',
-                          }}>
+                        <div style={{ marginTop: '8px' }}>
+                          <button
+                            onClick={() => setExpandedReasoning(expandedReasoning === msg.id ? null : msg.id)}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '6px',
+                              padding: '6px 12px', fontSize: '11px', fontWeight: 700,
+                              color: C.textMuted, background: 'transparent',
+                              border: `1px solid ${C.border}`, borderRadius: '8px',
+                              cursor: 'pointer', fontFamily: 'inherit', textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                            }}
+                          >
                             Reasoning ({msg.reasoning.length}) {expandedReasoning === msg.id ? '\u25B2' : '\u25BC'}
                           </button>
                           {expandedReasoning === msg.id && (
-                            <div style={{ marginTop: '6px', padding: '12px', background: 'rgba(0,0,0,0.3)', borderLeft: '3px solid rgba(59,130,246,0.2)', borderRadius: '0 8px 8px 0' }}>
+                            <div style={{
+                              marginTop: '8px', padding: '14px',
+                              background: 'rgba(0,0,0,0.25)',
+                              borderLeft: `3px solid ${C.accentBorder}`,
+                              borderRadius: '0 10px 10px 0',
+                            }}>
                               {msg.reasoning.map((step, j) => (
-                                <p key={j} style={{ fontSize: '12px', color: '#64748b', lineHeight: '1.6', margin: '4px 0' }}>
-                                  <span style={{ color: '#3b82f6', fontWeight: 700 }}>[{j}]</span> {step}
+                                <p key={j} style={{ fontSize: '12px', color: C.textSecondary, lineHeight: '1.6', margin: '4px 0' }}>
+                                  <span style={{ color: C.accent, fontWeight: 700 }}>[{j}]</span> {step}
                                 </p>
                               ))}
                             </div>
                           )}
                         </div>
                       )}
+
                       {/* Plan */}
                       {msg.plan && (
-                        <div style={{ marginTop: '6px', padding: '10px 12px', background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.1)', borderRadius: '8px', fontSize: '12px', color: '#64748b' }}>
-                          <span style={{ fontWeight: 700, color: '#60a5fa' }}>PLAN: </span>
+                        <div style={{
+                          marginTop: '8px', padding: '12px 14px',
+                          background: C.accentBg, border: `1px solid ${C.accentBorder}`,
+                          borderRadius: '10px', fontSize: '12px', color: C.textSecondary,
+                        }}>
+                          <span style={{ fontWeight: 800, color: C.accent }}>PLAN: </span>
                           {msg.plan.steps} steps | complexity: {msg.plan.complexity.toFixed(2)} | {msg.plan.goal.slice(0, 100)}
                         </div>
                       )}
@@ -616,10 +991,20 @@ const SovereignCommandConsole: React.FC = () => {
               </div>
             ))}
 
+            {/* Thinking indicator */}
             {isThinking && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', fontSize: '13px', color: '#60a5fa' }}>
-                <div style={{ display: 'flex', gap: '4px' }}>
-                  {[0,1,2].map(i => <div key={i} style={{ width: '6px', height: '6px', background: '#3b82f6', borderRadius: '50%', animation: 'scc-bounce 1.4s infinite ease-in-out', animationDelay: `${i*0.16}s` }} />)}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '14px 18px', fontSize: '13px', color: C.accent,
+              }}>
+                <div style={{ display: 'flex', gap: '5px' }}>
+                  {[0,1,2].map(i => (
+                    <div key={i} style={{
+                      width: '7px', height: '7px', background: C.accent, borderRadius: '50%',
+                      animation: 'scc-bounce 1.4s infinite ease-in-out',
+                      animationDelay: `${i * 0.16}s`,
+                    }} />
+                  ))}
                 </div>
                 Processing...
               </div>
@@ -628,63 +1013,97 @@ const SovereignCommandConsole: React.FC = () => {
           </div>
         </main>
 
-        {/* DESKTOP SIDEBAR — persistent telemetry */}
+        {/* DESKTOP SIDEBAR */}
         {isDesktop && renderSidebar()}
       </div>
 
-      {/* INPUT BAR */}
+      {/* ========== INPUT BAR ========== */}
       <div style={{
-        padding: isDesktop ? '14px 24px' : '12px 16px',
-        paddingBottom: isMobile ? 'max(12px, env(safe-area-inset-bottom))' : isDesktop ? '14px' : '12px',
-        background: '#0a0a10', borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0,
+        padding: isDesktop ? '14px 24px' : '10px 14px',
+        paddingBottom: isMobile ? 'max(10px, env(safe-area-inset-bottom))' : '14px',
+        background: C.bgCard, borderTop: `1px solid ${C.border}`, flexShrink: 0,
+        zIndex: 40,
       }}>
         <div style={{
-          maxWidth: chatMaxWidth, margin: '0 auto', display: 'flex', alignItems: 'flex-end', gap: '8px',
-          background: '#0c0c14', border: `1px solid ${input ? 'rgba(59,130,246,0.3)' : 'rgba(255,255,255,0.08)'}`,
-          borderRadius: '12px', padding: '4px', transition: 'border-color 0.2s',
+          maxWidth: isDesktop ? '880px' : isTablet ? '700px' : '100%',
+          margin: '0 auto',
+          display: 'flex', alignItems: 'flex-end', gap: '8px',
+          background: C.bgInput,
+          border: `1px solid ${input ? C.borderFocus : C.border}`,
+          borderRadius: '14px', padding: '4px',
+          transition: 'border-color 0.2s',
+          boxShadow: input ? `0 0 12px ${C.accentGlow}` : 'none',
         }}>
-          <textarea ref={inputRef} value={input} onChange={handleInputChange}
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={handleInputChange}
             onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }}}
             placeholder="Enter directive..."
             style={{
               flex: 1, background: 'transparent', border: 'none', outline: 'none',
               resize: 'none', fontSize: '15px', lineHeight: '1.5', padding: '10px 12px',
-              color: '#e0e0e0', fontFamily: 'inherit', minHeight: '44px', maxHeight: '160px',
-            }} rows={1}
+              color: C.text, fontFamily: 'inherit', minHeight: '44px', maxHeight: '160px',
+            }}
+            rows={1}
           />
-          <button onClick={handleSend} disabled={!input.trim() || !isConnected}
+          <button
+            onClick={handleSend}
+            disabled={!input.trim() || !isConnected}
             className="scc-send-btn"
             style={{
-              width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: input.trim() && isConnected ? 'rgba(59,130,246,0.2)' : 'transparent',
-              border: 'none', borderRadius: '10px',
-              color: input.trim() && isConnected ? '#60a5fa' : '#1e293b',
+              width: '44px', height: '44px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: input.trim() && isConnected ? C.accentBg : 'transparent',
+              border: `1px solid ${input.trim() && isConnected ? C.accentBorder : 'transparent'}`,
+              borderRadius: '10px',
+              color: input.trim() && isConnected ? C.accent : C.textDim,
               cursor: input.trim() && isConnected ? 'pointer' : 'default',
-              flexShrink: 0, transition: 'background 0.15s',
-            }}>
+              flexShrink: 0, transition: 'all 0.15s',
+            }}
+          >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>
             </svg>
           </button>
         </div>
-        <div style={{ maxWidth: chatMaxWidth, margin: '6px auto 0', display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#1e293b', padding: '0 8px' }}>
+        <div style={{
+          maxWidth: isDesktop ? '880px' : isTablet ? '700px' : '100%',
+          margin: '6px auto 0', display: 'flex', justifyContent: 'space-between',
+          fontSize: '10px', color: C.textDim, padding: '0 8px',
+        }}>
           <span>{isConnected ? 'Link active' : 'Reconnecting...'}</span>
           <span>Shift+Enter for newline</span>
         </div>
       </div>
 
+      {/* ========== GLOBAL STYLES ========== */}
       <style>{`
-        @keyframes scc-bounce { 0%,80%,100%{transform:scale(0);opacity:.5} 40%{transform:scale(1);opacity:1} }
+        @keyframes scc-bounce {
+          0%,80%,100% { transform: scale(0); opacity: 0.5; }
+          40% { transform: scale(1); opacity: 1; }
+        }
         * { box-sizing: border-box; }
-        body { margin: 0; padding: 0; overflow: hidden; }
-        input::placeholder, textarea::placeholder { color: #334155; }
+        body { margin: 0; padding: 0; overflow: hidden; background: ${C.bg}; }
+        html { background: ${C.bg}; }
+        input::placeholder, textarea::placeholder { color: ${C.textDim}; }
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
-        .scc-send-btn:hover:not(:disabled) { background: rgba(59,130,246,0.35) !important; }
-        button:hover { opacity: 0.85; }
-        @media (hover: none) { button:hover { opacity: 1; } .scc-send-btn:hover:not(:disabled) { background: rgba(59,130,246,0.2) !important; } }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+        .scc-send-btn:hover:not(:disabled) { background: rgba(99,140,255,0.25) !important; border-color: rgba(99,140,255,0.4) !important; }
+        select option { background: ${C.bgInput}; color: ${C.purple}; }
+        button:active { transform: scale(0.97); }
+        @media (hover: hover) {
+          button:hover { opacity: 0.9; }
+        }
+        @media (hover: none) {
+          button:hover { opacity: 1; }
+          .scc-send-btn:hover:not(:disabled) { background: ${C.accentBg} !important; }
+        }
+        /* Push Eruda FAB above our input bar */
+        #eruda { z-index: 9999 !important; }
+        .eruda-entry-btn { bottom: 80px !important; right: 10px !important; }
       `}</style>
     </div>
   );
