@@ -13,8 +13,10 @@ pub mod superposition;
 pub mod holographic;
 pub mod analogy;
 pub mod sensory;
+pub mod hadamard;
 
 pub use vector::{BipolarVector, HD_DIMENSIONS};
+pub use hadamard::{HadamardGenerator, CorrelatedGenerator};
 pub use compute::{ComputeBackend, LocalBackend};
 pub use adaptive::{UiAttributes, UiElement};
 pub use error::HdcError;

@@ -9,6 +9,8 @@ pub mod mcts;
 pub mod router;
 pub mod world_model;
 pub mod active_inference;
+pub mod metacognitive;
+pub mod knowledge_compiler;
 
 pub use planner::{Plan, PlanStep, StepStatus, Planner};
 pub use reasoner::{CognitiveMode, CognitiveCore, ThoughtResult};
@@ -17,3 +19,5 @@ pub use mcts::{MctsEngine, MctsAction};
 pub use router::{SemanticRouter, IntelligenceTier};
 pub use world_model::WorldModel;
 pub use active_inference::ActiveInferenceCore;
+pub use metacognitive::{MetaCognitiveProfiler, CognitiveDomain, PerformanceRecord, ImprovementTarget};
+pub use knowledge_compiler::{KnowledgeCompiler, AccelerationMetrics, CompiledEntry};

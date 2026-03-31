@@ -16,6 +16,8 @@ use crate::hdc::vector::BipolarVector;
 use crate::hdc::holographic::HolographicMemory;
 use crate::hdc::error::HdcError;
 use crate::cognition::planner::{Plan, Planner};
+use crate::cognition::metacognitive::{MetaCognitiveProfiler, CognitiveDomain, PerformanceRecord};
+use crate::cognition::knowledge_compiler::KnowledgeCompiler;
 
 /// The active cognitive mode.
 #[derive(Debug, Clone, PartialEq)]
@@ -99,6 +101,10 @@ pub struct CognitiveCore {
     context_window: Vec<BipolarVector>,
     /// Maximum context window size.
     max_context: usize,
+    /// MetaCognitive Profiler — tracks strengths and weaknesses.
+    pub profiler: MetaCognitiveProfiler,
+    /// Knowledge Compiler — System 2 → System 1 pipeline.
+    pub compiler: KnowledgeCompiler,
 }
 
 impl CognitiveCore {
@@ -113,6 +119,8 @@ impl CognitiveCore {
             intent_prototypes: Vec::new(),
             context_window: Vec::new(),
             max_context: 10,
+            profiler: MetaCognitiveProfiler::new(),
+            compiler: KnowledgeCompiler::new(),
         };
         core.seed_intents()?;
         Ok(core)
@@ -394,6 +402,42 @@ impl CognitiveCore {
                 intent: Some(intent),
             }
         };
+
+        // Track which mode was used (for acceleration metrics)
+        self.compiler.record_mode(result.mode.clone());
+
+        // If System 2 produced a high-confidence result, compile to System 1
+        if result.mode == CognitiveMode::Deep && result.confidence > 0.7 {
+            let compiled = self.compiler.compile(
+                &result.mode,
+                &input_vector,
+                &result.output,
+                result.confidence,
+                &result.explanation,
+            )?;
+            if compiled {
+                debuglog!("CognitiveCore::think: Compiled System 2 result to System 1");
+            }
+        }
+
+        // Profile the result: map intent to cognitive domain
+        let domain = match &result.intent {
+            Some(Intent::WriteCode { .. }) | Some(Intent::Improve { .. }) => CognitiveDomain::Coding,
+            Some(Intent::Analyze { .. }) => CognitiveDomain::Security,
+            Some(Intent::FixBug { .. }) => CognitiveDomain::Coding,
+            Some(Intent::Explain { .. }) => CognitiveDomain::FactualKnowledge,
+            Some(Intent::Search { .. }) => CognitiveDomain::FactualKnowledge,
+            Some(Intent::PlanTask { .. }) => CognitiveDomain::Planning,
+            Some(Intent::Converse { .. }) => CognitiveDomain::Conversation,
+            _ => CognitiveDomain::Reasoning,
+        };
+        let _ = self.profiler.record(&PerformanceRecord {
+            domain,
+            success: result.confidence > 0.5,
+            confidence: result.confidence,
+            task_vector: input_vector.clone(),
+            description: result.explanation.clone(),
+        });
 
         // Update context window
         self.context_window.push(input_vector.clone());

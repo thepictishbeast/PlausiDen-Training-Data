@@ -19,6 +19,7 @@ use crate::hdc::error::HdcError;
 
 use crate::cognition::reasoner::CognitiveCore;
 use crate::cognition::router::{SemanticRouter, IntelligenceTier};
+use crate::psl::feedback::PslFeedbackLoop;
 use crate::telemetry::MaterialAuditor;
 use crate::intelligence::persistence::KnowledgeStore;
 use crate::intelligence::background::{BackgroundLearner, SharedKnowledge};
@@ -39,6 +40,8 @@ pub struct LfiAgent {
     pub sovereign_identity: SovereignProof,
     pub shared_knowledge: Arc<Mutex<SharedKnowledge>>,
     pub background_learner: BackgroundLearner,
+    /// PSL rejection feedback loop — learns from audit failures.
+    pub psl_feedback: PslFeedbackLoop,
 }
 
 impl LfiAgent {
@@ -118,6 +121,7 @@ impl LfiAgent {
             sovereign_identity,
             shared_knowledge,
             background_learner,
+            psl_feedback: PslFeedbackLoop::new(),
         })
     }
 
