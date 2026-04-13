@@ -608,6 +608,62 @@ impl TrainingDataGenerator {
         ]
     }
 
+    // ================================================================
+    // QUANTUM COMPUTING
+    // ================================================================
+    pub fn quantum_examples() -> Vec<TrainingExample> {
+        vec![
+            TrainingExample::new("quantum", "What is a qubit?", "quantum bit — superposition of 0 and 1 states simultaneously", 0.3, &["fundamentals"]),
+            TrainingExample::new("quantum", "What is quantum entanglement?", "correlated quantum states — measuring one instantly affects the other regardless of distance", 0.35, &["phenomena"]),
+            TrainingExample::new("quantum", "What is Shor's algorithm?", "quantum algorithm for integer factorization — threatens RSA encryption", 0.45, &["algorithms"]),
+            TrainingExample::new("quantum", "What is Grover's algorithm?", "quantum search: O(sqrt(N)) vs classical O(N) — quadratic speedup", 0.4, &["algorithms"]),
+            TrainingExample::new("quantum", "What is quantum supremacy?", "quantum computer solving a problem infeasible for classical computers", 0.35, &["milestones"]),
+            TrainingExample::new("quantum", "Why does quantum computing threaten current encryption?", "Shor's algorithm can factor large primes efficiently, breaking RSA and ECC", 0.4, &["security"]),
+        ]
+    }
+
+    // ================================================================
+    // FORMAL VERIFICATION
+    // ================================================================
+    pub fn formal_verification_examples() -> Vec<TrainingExample> {
+        vec![
+            TrainingExample::new("formal_verify", "What is formal verification?", "mathematically proving that a system satisfies its specification", 0.3, &["fundamentals"]),
+            TrainingExample::new("formal_verify", "What is model checking?", "exhaustively checking all states of a finite model against a property", 0.35, &["techniques"]),
+            TrainingExample::new("formal_verify", "What is theorem proving?", "constructing logical proofs that a property holds for all inputs", 0.35, &["techniques"]),
+            TrainingExample::new("formal_verify", "What is Kani?", "Rust verification tool using bounded model checking — proves absence of panics", 0.4, &["tools"]),
+            TrainingExample::new("formal_verify", "What is TLA+?", "formal specification language for concurrent/distributed systems by Lamport", 0.4, &["tools"]),
+            TrainingExample::new("formal_verify", "What is fuzzing?", "automated testing with random/mutated inputs to find crashes and bugs", 0.25, &["techniques"]),
+        ]
+    }
+
+    // ================================================================
+    // DEVOPS & CI/CD
+    // ================================================================
+    pub fn devops_examples() -> Vec<TrainingExample> {
+        vec![
+            TrainingExample::new("devops", "What is CI/CD?", "Continuous Integration/Continuous Deployment — automated build, test, deploy pipeline", 0.2, &["fundamentals"]),
+            TrainingExample::new("devops", "What is infrastructure as code?", "managing infrastructure through configuration files rather than manual setup", 0.25, &["practices"]),
+            TrainingExample::new("devops", "What is a container?", "lightweight isolated environment sharing the host kernel — Docker, OCI", 0.2, &["containers"]),
+            TrainingExample::new("devops", "What is Kubernetes?", "container orchestration platform — manages deployment, scaling, networking of containers", 0.3, &["containers"]),
+            TrainingExample::new("devops", "What is GitOps?", "using Git as single source of truth for infrastructure and application deployment", 0.25, &["practices"]),
+            TrainingExample::new("devops", "What is observability?", "understanding system behavior through logs, metrics, and traces", 0.2, &["monitoring"]),
+        ]
+    }
+
+    // ================================================================
+    // HUMAN RIGHTS & DIGITAL FREEDOM
+    // ================================================================
+    pub fn human_rights_examples() -> Vec<TrainingExample> {
+        vec![
+            TrainingExample::new("human_rights", "What is freedom of expression?", "right to seek, receive, and share information and ideas without censorship", 0.15, &["rights"]),
+            TrainingExample::new("human_rights", "What is the right to privacy?", "fundamental right to be free from unwarranted surveillance and data collection", 0.15, &["privacy"]),
+            TrainingExample::new("human_rights", "What is digital sovereignty?", "individual control over one's own data, identity, and digital presence", 0.25, &["digital_rights"]),
+            TrainingExample::new("human_rights", "What is censorship resistance?", "systems designed so no single authority can block or remove content", 0.3, &["technology"]),
+            TrainingExample::new("human_rights", "What is the right to be forgotten?", "GDPR right to have personal data erased when no longer necessary", 0.2, &["privacy_law"]),
+            TrainingExample::new("human_rights", "Why does encryption matter for human rights?", "protects journalists, activists, and citizens from surveillance and persecution", 0.25, &["privacy", "security"]),
+        ]
+    }
+
     pub fn all_examples() -> Vec<TrainingExample> {
         let mut all = Vec::new();
         all.extend(Self::math_examples());
@@ -644,6 +700,10 @@ impl TrainingDataGenerator {
         all.extend(Self::systems_design_examples());
         all.extend(Self::threat_intel_examples());
         all.extend(Self::ethical_hacking_examples());
+        all.extend(Self::quantum_examples());
+        all.extend(Self::formal_verification_examples());
+        all.extend(Self::devops_examples());
+        all.extend(Self::human_rights_examples());
         all
     }
 
