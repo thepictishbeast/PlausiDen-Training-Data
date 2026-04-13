@@ -307,6 +307,66 @@ impl TrainingDataGenerator {
         ]
     }
 
+    // ================================================================
+    // AI & MACHINE LEARNING
+    // ================================================================
+    pub fn ai_ml_examples() -> Vec<TrainingExample> {
+        vec![
+            TrainingExample::new("ai_ml", "What is overfitting?", "model learns noise in training data, performs poorly on new data", 0.25, &["fundamentals"]),
+            TrainingExample::new("ai_ml", "What is gradient descent?", "optimization algorithm that iteratively adjusts parameters to minimize loss", 0.3, &["optimization"]),
+            TrainingExample::new("ai_ml", "What is a neural network?", "layered graph of weighted connections that learns patterns from data", 0.2, &["architectures"]),
+            TrainingExample::new("ai_ml", "What is reinforcement learning?", "agent learns by taking actions in environment and receiving rewards", 0.3, &["paradigms"]),
+            TrainingExample::new("ai_ml", "What is a transformer?", "attention-based architecture: self-attention + feedforward, scales to billions of parameters", 0.35, &["architectures"]),
+            TrainingExample::new("ai_ml", "What is HDC/VSA?", "hyperdimensional computing: encode data as high-dimensional vectors, compose with bind/bundle/permute", 0.3, &["architectures", "hdc"]),
+            TrainingExample::new("ai_ml", "What is the bias-variance tradeoff?", "simple models underfit (high bias), complex models overfit (high variance)", 0.3, &["fundamentals"]),
+            TrainingExample::new("ai_ml", "What is transfer learning?", "reuse knowledge from one task to improve performance on another", 0.25, &["techniques"]),
+        ]
+    }
+
+    // ================================================================
+    // LINEAR ALGEBRA & STATISTICS
+    // ================================================================
+    pub fn math_advanced_examples() -> Vec<TrainingExample> {
+        vec![
+            TrainingExample::new("math_advanced", "What is a dot product?", "sum of element-wise products: a·b = Σ(ai*bi)", 0.25, &["linear_algebra"]),
+            TrainingExample::new("math_advanced", "What is cosine similarity?", "dot(a,b) / (||a|| * ||b||) — measures angle between vectors", 0.3, &["linear_algebra"]),
+            TrainingExample::new("math_advanced", "What is an eigenvalue?", "scalar λ where Av = λv — vector direction unchanged by transformation", 0.4, &["linear_algebra"]),
+            TrainingExample::new("math_advanced", "What is standard deviation?", "measure of spread: sqrt(mean of squared deviations from mean)", 0.25, &["statistics"]),
+            TrainingExample::new("math_advanced", "What is Bayes' theorem?", "P(A|B) = P(B|A)*P(A)/P(B) — updating beliefs with evidence", 0.35, &["statistics", "probability"]),
+            TrainingExample::new("math_advanced", "What is the central limit theorem?", "sample means approach normal distribution regardless of population distribution", 0.35, &["statistics"]),
+            TrainingExample::new("math_advanced", "What is a matrix inverse?", "A*A^-1 = I — only exists for square non-singular matrices", 0.3, &["linear_algebra"]),
+        ]
+    }
+
+    // ================================================================
+    // SOCIAL ENGINEERING DEFENSE
+    // ================================================================
+    pub fn social_engineering_examples() -> Vec<TrainingExample> {
+        vec![
+            TrainingExample::new("social_eng", "What is pretexting?", "creating a fabricated scenario to extract information from a target", 0.3, &["techniques"]),
+            TrainingExample::new("social_eng", "What is spear phishing?", "targeted phishing email personalized to a specific individual", 0.3, &["techniques"]),
+            TrainingExample::new("social_eng", "What is baiting?", "leaving infected USB drives or enticing downloads to lure victims", 0.25, &["techniques"]),
+            TrainingExample::new("social_eng", "What is tailgating?", "following authorized person through secure door without credentials", 0.2, &["physical"]),
+            TrainingExample::new("social_eng", "How to detect phishing?", "check sender domain, hover over links, verify urgency claims, look for typos", 0.3, &["defense"]),
+            TrainingExample::new("social_eng", "How to protect against social engineering?", "verify identity independently, never share credentials, question urgency, report suspicious contacts", 0.3, &["defense"]),
+            TrainingExample::new("social_eng", "What is vishing?", "voice phishing — social engineering over phone calls", 0.2, &["techniques"]),
+        ]
+    }
+
+    // ================================================================
+    // OPERATING SYSTEMS & LINUX
+    // ================================================================
+    pub fn os_examples() -> Vec<TrainingExample> {
+        vec![
+            TrainingExample::new("os", "What is a kernel?", "core of OS — manages hardware, memory, processes, I/O", 0.2, &["fundamentals"]),
+            TrainingExample::new("os", "What is a process vs thread?", "process: isolated address space. thread: shared memory within process", 0.25, &["concurrency"]),
+            TrainingExample::new("os", "What is virtual memory?", "abstraction giving each process its own address space, using disk as overflow", 0.3, &["memory"]),
+            TrainingExample::new("os", "What is SELinux?", "mandatory access control — restricts processes to minimum required permissions", 0.3, &["security"]),
+            TrainingExample::new("os", "What is a syscall?", "interface between user space and kernel — request OS services", 0.25, &["fundamentals"]),
+            TrainingExample::new("os", "What is iptables/nftables?", "Linux firewall — filter packets by rules (source, dest, port, protocol)", 0.3, &["networking", "security"]),
+        ]
+    }
+
     /// Get ALL training examples across ALL domains.
     pub fn all_examples() -> Vec<TrainingExample> {
         let mut all = Vec::new();
@@ -326,6 +386,10 @@ impl TrainingDataGenerator {
         all.extend(Self::networking_examples());
         all.extend(Self::voting_examples());
         all.extend(Self::history_examples());
+        all.extend(Self::ai_ml_examples());
+        all.extend(Self::math_advanced_examples());
+        all.extend(Self::social_engineering_examples());
+        all.extend(Self::os_examples());
         all
     }
 
