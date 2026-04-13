@@ -8,6 +8,8 @@ pub mod background;
 pub mod persistence;
 pub mod web_search;
 pub mod serial_streamer;
+pub mod weight_manager;
+pub mod training;
 
 pub use osint::{OsintAnalyzer, OsintSignal};
 pub use web_audit::ConnectivityAxiom;
