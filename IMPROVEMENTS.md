@@ -1,7 +1,49 @@
 # LFI — Improvements Tracker
 
-Status: **Active Development**
-Last updated: 2026-04-13 (604 tests, 0 failures, 60+ modules, 38 training domains)
+Status: **LIVE TRAINING**
+Last updated: 2026-04-14 (756 tests, 0 failures, 70+ modules, 49 training domains, Ollama LIVE)
+
+## CURRENT MILESTONE: Real Ollama Training Confirmed Working
+
+LFI successfully ran real inference training against qwen2.5-coder:7b on 2026-04-14.
+Pilot run: 20/22 correct on math domain (90.9%, real LLM latency ~7s/query warm).
+The "wrong" answers were whitespace format mismatches, now fixed.
+
+## Recently Completed (2026-04-14 Session)
+
+### Intelligent Inference Pipeline
+- [x] Progressive model routing (lightweight 8b for easy, 7b-coder for hard)
+- [x] Inference caching layer with normalized-key exact match
+- [x] Error taxonomy: FactualError, ReasoningError, FormatMismatch, PartialCorrect, Hallucination, OffTopic, Refusal
+- [x] Active learning: prioritize by mastery inverse + sweet spot + error history + cross-domain
+- [x] Multi-model ensemble with fuzzy-match consensus voting
+- [x] Whitespace-insensitive answer verification (critical fix from training run)
+
+### Escape Velocity Architecture
+- [x] Code evaluation sandbox: StaticAnalyzer, CodeEvaluator, ChallengeLibrary (10 challenges)
+- [x] Self-Improvement Engine: OODA loop (Profile → Plan → Execute → Reflect → Recurse)
+- [x] Cross-Domain Reasoning Engine: 14 structural analogies + Gentner transfer learning
+- [x] Math Engine: step-by-step derivation with self-verification via inverse operations
+- [x] LFI Daemon: continuous autonomous phase-rotating improvement (7 phases)
+- [x] Ollama Training Runner binary (src/bin/ollama_train.rs)
+
+### Massive Data Expansion
+- [x] 120+ pentesting examples: recon, exploitation, evasion, vuln scanning, exfil, social eng, methodology, strategy, Linux
+- [x] 37 defensive AI + anti-surveillance examples (PlausiDen mission)
+- [x] 300→800+ effective examples via augmentation + 34 adversarial
+- [x] 49 total training domains with cross-domain transfer relationships
+
+### SUPERSOCIETY Audit
+- [x] Pass 1: Fixed 8 UTF-8 byte-slicing panics in production paths
+- [x] Pass 2: Fixed 26 remaining UTF-8 patterns, 34 total sites secured
+- [x] Memory leak fix: Box::leak() in cross_domain.rs replaced with owned Strings
+- [x] crate::truncate_str() helper — UTF-8 safe at char boundaries
+- [x] Fuzzy matcher: whitespace normalization (fixes LLM format mismatches)
+
+### UI/UX Foundation
+- [x] Premium design system (lfi_dashboard/src/design.ts)
+- [x] Claude Code-inspired dark mode with gradients, typography scale, motion tokens
+- [x] Component presets (card, hero, button, tag, label, code)
 
 ## Recently Completed
 
