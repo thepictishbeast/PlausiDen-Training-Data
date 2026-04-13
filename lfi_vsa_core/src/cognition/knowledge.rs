@@ -816,6 +816,26 @@ impl KnowledgeEngine {
         Ok(scored)
     }
 
+    /// Average mastery across all concepts in a domain.
+    /// Returns 0.0 if no concepts exist for this domain (unknown territory).
+    /// BUG ASSUMPTION: domain matching is heuristic — checks related_concepts
+    /// and concept name. A concept tagged with "crypto" won't match "security"
+    /// unless explicitly linked.
+    pub fn domain_mastery(&self, domain: &str) -> f64 {
+        let domain_lower = domain.to_lowercase();
+        let domain_concepts: Vec<&LearnedConcept> = self.concepts.iter()
+            .filter(|c| {
+                c.related_concepts.iter().any(|t| t.to_lowercase() == domain_lower)
+                    || c.name.to_lowercase().contains(&domain_lower)
+            })
+            .collect();
+        if domain_concepts.is_empty() {
+            return 0.0;
+        }
+        let total_mastery: f64 = domain_concepts.iter().map(|c| c.mastery).sum();
+        total_mastery / domain_concepts.len() as f64
+    }
+
     /// Identify knowledge gaps: concepts with low mastery that have been encountered.
     ///
     /// Returns concepts sorted by improvement priority (low mastery + high encounters

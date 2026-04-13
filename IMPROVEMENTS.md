@@ -1,7 +1,7 @@
 # LFI — Improvements Tracker
 
-Status: **Active**
-Last updated: 2026-04-13 (session end: 580+ tests, 324+ new)
+Status: **Active Development**
+Last updated: 2026-04-13 (604 tests, 0 failures, 60+ modules, 38 training domains)
 
 ## Recently Completed
 
@@ -232,54 +232,85 @@ Last updated: 2026-04-13 (session end: 580+ tests, 324+ new)
 - [x] 5 new tests (4→9 total)
 - [x] **300 total LFI tests, 0 failures** (up from 256 at session start)
 
-## Open — High Priority (Provenance Integration)
+### Intelligent Inference Pipeline (2026-04-13)
+- [x] **Progressive Model Routing** — `ModelRouter` selects lightweight (8b) or heavy (7b-coder) model based on question difficulty. Laptop-optimized: avoids the 32b model entirely.
+- [x] **Inference Caching** — `InferenceCache` with normalized-key exact match. Avoids re-querying Ollama for repeated questions. Hit rate tracking.
+- [x] **Error Taxonomy** — `ErrorKind` enum classifies WHY answers are wrong: FactualError, ReasoningError, FormatMismatch, PartialCorrect, Hallucination, OffTopic, Refusal. Per-domain error history tracking.
+- [x] **Active Learning** — `ActiveLearner::prioritize()` scores examples by expected information gain: inverse mastery + difficulty sweet-spot + error-prone domains + cross-domain bridges. Most valuable questions asked first.
+- [x] **Multi-Model Ensemble** — `EnsembleInference::ask_ensemble()` queries multiple backends, votes by fuzzy-match consensus. Ties broken by answer length heuristic.
+- [x] **Weakest Domain Analysis** — `weakest_domains()` identifies domains with highest error rates for targeted retraining.
+- [x] **Training Report** — `InferenceTrainingResult::report()` generates ASCII summary with accuracy, cache hit rate, and error breakdown.
+- [x] **domain_mastery()** — `KnowledgeEngine::domain_mastery()` computes average mastery across all concepts in a domain. Used by active learning.
+- [x] **Ollama prompt optimization** — Concise answer prompts, temperature 0.3, 200-token limit, proper JSON escaping, 120s timeout.
+- [x] 20 new tests (inference cache, error taxonomy, model routing, active learning, ensemble, reports, weakest domains)
+- [x] **604 total LFI tests, 0 failures**
 
-### Wire ProvenanceEngine into PSL Supervisor
-Each axiom evaluation in `psl/supervisor.rs` `audit()` should record a trace entry tagged with `InferenceSource::PslAxiomEvaluation`. The axiom_id, relevance, and confidence are already computed — just pass them to the trace arena.
+## Roadmap — Active Development
 
-### Wire ProvenanceEngine into Active Inference
-Each `step()` in `cognition/active_inference.rs` should record a trace entry with the free energy, prediction error, and outcome type (Equilibrium/Act/Perceive).
+### In Progress
 
-### Wire ProvenanceEngine into CognitiveCore
-The dual-mode reasoner in `cognition/reasoner.rs` should:
-- System 1 fast path: record lightweight trace (InferenceSource::System1FastPath)
-- System 2 deliberation: record full trace tree (InferenceSource::System2Deliberation)
-- Knowledge compiler acceleration: record compilation event
+#### Real Ollama Inference Training
+Connect InferenceTrainer to actual Ollama models (deepseek-r1:8b, qwen2.5-coder:7b) and run the 300-example training pipeline with real LLM answers. Measure accuracy, analyze error patterns, feed corrections into KnowledgeEngine.
 
-### Enforce ProvenanceKind in Crypto Epistemology
-The `crypto_epistemology.rs` `EpistemicLedger` should be extended to:
-- Accept a `ProvenanceEngine` reference
-- When committing a belief, check if a traced derivation exists for it
-- If no trace exists, the commitment must be tagged as reconstructed
-- This is the enforcement point — the ledger refuses to certify untraced beliefs as traced
+#### Training Data Augmentation
+Auto-generate question variations from existing 300 examples. Rephrasings, harder versions, and related questions. Target: 300→1000+ effective examples. Template-based and domain-specific transformations.
 
-## Open — Medium Priority
+#### Adversarial Training Examples
+Deliberately tricky, misleading, and edge-case questions across all 38 domains. Common misconceptions, ambiguous phrasings, trap questions. Teaches LFI to handle real-world messy inputs.
 
-### Self-Play Provenance
-`bin/self_play.rs` runs 1M generations of thesis-antithesis-synthesis. Each synthesis should record a full trace chain: thesis → PSL audit → synthesis. These traces should persist across episodes for post-hoc analysis of strategy evolution.
+### Planned — High Priority
 
-### Provenance Serialization
-Add `serde::Serialize` / `Deserialize` on `TraceEntry` and `TraceArena` for persistence. Traces should survive process restarts via the existing knowledge persistence layer.
+#### Self-Play Provenance Integration
+Wire traces into MCTS thesis-antithesis-synthesis self-play episodes. Each synthesis records a full trace chain. Traces persist across episodes for strategy evolution analysis.
 
-### Provenance Query API
-Expose provenance queries via the `api.rs` REST endpoints:
+#### Knowledge Graph Export
+Serialize the learned concept graph (concepts, relationships, mastery levels) as DOT/JSON for visualization. Show what LFI knows and how concepts connect.
+
+#### Provenance Serialization
+`serde::Serialize` / `Deserialize` on `TraceEntry` and `TraceArena`. Traces survive process restarts via the knowledge persistence layer.
+
+#### Provenance Query API
+REST endpoints via `api.rs`:
 - `GET /provenance/:conclusion_id` → ProvenancedExplanation
 - `GET /provenance/:conclusion_id/chain` → Vec<TraceEntry>
 - `GET /provenance/stats` → total traces, traced vs reconstructed ratio
 
-## Open — General LFI Improvements
+### Planned — Medium Priority
 
-### Phase 5A: Uncommitted work needs Beta audit
-The multimodal transducers (audio, image, text), codebook fixes, and StatisticalEquilibriumAxiom are complete but uncommitted. Needs Beta (Gemini) clearance per protocol.
+#### Spaced Repetition Scheduler
+Time-based concept review scheduling. Track when concepts were last reinforced, schedule re-testing of decaying concepts. Optimal review intervals based on mastery and forgetting curve.
 
-### World Model causal prediction
-`cognition/world_model.rs` has basic predict_next_state but no integration with the provenance system. Predictions should be traceable.
+#### Distributed Inference
+Split training work across multiple Ollama instances on different machines. Useful when laptop + VPS both run Ollama.
 
-### OPSEC Intercept hardening
-`hdlm/intercept.rs` is alpha. Needs full PII/credential scrubbing with provenance-tagged audit trail of what was scrubbed and why.
+#### GPU Compute Backend
+`hdc/compute.rs` has `ComputeBackend` trait with only `LocalBackend`. Add CUDA/Vulkan backend for 3050Ti acceleration of VSA operations.
 
-### Compute backend abstraction
-`hdc/compute.rs` has `ComputeBackend` trait but only `LocalBackend`. GPU/remote backends are needed for production workloads.
+#### Android/NDK Build
+Cross-compile for Pixel 10 Pro XL via NDK. Lightweight inference on mobile with knowledge checkpoint sync.
 
-### Formal verification
-No Kani or TLA+ integration exists. The PSL axiom system and provenance invariants are ideal candidates for formal verification.
+#### Formal Verification
+Kani or TLA+ integration for PSL axiom system and provenance invariants — ideal candidates for formal verification.
+
+### Planned — Low Priority (Post-1.0)
+
+#### Phase 5B: WebSocket API for Live Telemetry
+Real-time training progress streaming to dashboard.
+
+#### Phase 5C: Frontend Dashboard
+Web UI for monitoring training runs, knowledge state, error patterns.
+
+#### Phase 5D: Remote GPU Backend
+Cloud GPU offloading for heavy VSA operations.
+
+#### Phase 5E: End-to-End Sensorium Integration
+Full multimodal pipeline: audio + image + text → VSA → reasoning → output.
+
+## Previously Completed (Provenance Integration)
+
+All provenance wiring is complete:
+- [x] PSL Supervisor → `audit_with_provenance()` (2026-04-13)
+- [x] Active Inference → `step_with_provenance()` (2026-04-13)
+- [x] CognitiveCore → `think_with_provenance()` (2026-04-13)
+- [x] Crypto Epistemology → `commit_belief_with_provenance()` (2026-04-13)
+- [x] MCTS → provenance recording per expand+simulate cycle (2026-04-13)
