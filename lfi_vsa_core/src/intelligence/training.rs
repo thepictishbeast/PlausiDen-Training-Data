@@ -197,6 +197,102 @@ impl Trainer {
         (self.total_episodes, self.total_syntheses)
     }
 
+    /// Adaptive training: auto-adjusts difficulty based on accuracy.
+    ///
+    /// If accuracy > 90%: increase difficulty (move to harder examples)
+    /// If accuracy < 50%: decrease difficulty (focus on easier material)
+    /// This prevents both under-challenge and overwhelming the learner.
+    pub fn train_adaptive(
+        &mut self,
+        knowledge: &mut crate::cognition::knowledge::KnowledgeEngine,
+    ) -> Result<CombinedTrainingResult, HdcError> {
+        info!("// TRAINING: Adaptive mode — auto-adjusting difficulty");
+
+        let all = crate::intelligence::training_data::TrainingDataGenerator::all_examples();
+        let mut correction_loop = crate::intelligence::training_data::CorrectionLoop::new();
+        let mut epoch_results = Vec::new();
+        let mut final_checkpoint = None;
+        let mut current_max_difficulty = 0.15_f64; // Start very easy
+
+        for epoch in 0..self.config.epochs {
+            // Filter examples by current difficulty ceiling.
+            let curriculum: Vec<_> = all.iter()
+                .filter(|e| e.difficulty <= current_max_difficulty)
+                .cloned()
+                .collect();
+
+            // Ingest and learn.
+            let _ = crate::intelligence::training_data::TrainingDataGenerator::ingest_into_knowledge(
+                knowledge, &curriculum,
+            )?;
+
+            // Self-play.
+            let sp_result = self.run_epoch(epoch)?;
+
+            // Evaluate.
+            let _ = correction_loop.evaluate_and_correct(knowledge, &curriculum)?;
+            let accuracy = correction_loop.overall_accuracy();
+
+            // ADAPTIVE ADJUSTMENT:
+            if accuracy > 0.9 && current_max_difficulty < 1.0 {
+                current_max_difficulty = (current_max_difficulty + 0.15).min(1.0);
+                info!("// ADAPTIVE: Accuracy {:.0}% > 90% — increasing difficulty to {:.2}",
+                    accuracy * 100.0, current_max_difficulty);
+            } else if accuracy < 0.5 && current_max_difficulty > 0.1 {
+                current_max_difficulty = (current_max_difficulty - 0.05).max(0.1);
+                info!("// ADAPTIVE: Accuracy {:.0}% < 50% — decreasing difficulty to {:.2}",
+                    accuracy * 100.0, current_max_difficulty);
+            }
+
+            info!("// ADAPTIVE: Epoch {} — {}/{} examples, accuracy={:.1}%, difficulty_cap={:.2}",
+                epoch, curriculum.len(), all.len(), accuracy * 100.0, current_max_difficulty);
+
+            // Knowledge transfer.
+            let domains: Vec<String> = curriculum.iter()
+                .map(|e| e.domain.clone())
+                .collect::<std::collections::HashSet<_>>()
+                .into_iter()
+                .collect();
+            for domain in &domains {
+                let _ = crate::intelligence::training_data::TrainingDataGenerator::apply_transfer(
+                    knowledge, domain, 0.05,
+                );
+            }
+
+            // Mastery decay.
+            knowledge.apply_mastery_decay(0.01);
+
+            // Checkpoint.
+            let cp_path = self.config.checkpoint_dir.join(
+                format!("adaptive_epoch_{:04}_{}", epoch,
+                    crate::intelligence::weight_manager::IntelligenceCheckpoint::generate_filename())
+            );
+            let cp = crate::intelligence::weight_manager::IntelligenceCheckpoint::capture(
+                "{}", self.total_episodes, knowledge.concept_count(),
+                correction_loop.total_corrections(), sp_result.syntheses_forged,
+                &format!("Adaptive epoch {} — accuracy {:.1}%, difficulty ≤ {:.2}",
+                    epoch, accuracy * 100.0, current_max_difficulty),
+            );
+            if let Err(e) = cp.save(&cp_path) {
+                debuglog!("Trainer: Checkpoint failed: {:?}", e);
+            } else {
+                final_checkpoint = Some(cp_path);
+            }
+
+            epoch_results.push(sp_result);
+        }
+
+        Ok(CombinedTrainingResult {
+            epochs_completed: self.config.epochs,
+            total_episodes: self.total_episodes as usize,
+            total_syntheses: self.total_syntheses as usize,
+            final_accuracy: correction_loop.overall_accuracy(),
+            total_corrections: correction_loop.total_corrections(),
+            concepts_learned: knowledge.concept_count(),
+            final_checkpoint_path: final_checkpoint,
+        })
+    }
+
     /// Curriculum training: progressively increase difficulty across epochs.
     ///
     /// Epoch 0: only easy examples (difficulty ≤ 0.2)
