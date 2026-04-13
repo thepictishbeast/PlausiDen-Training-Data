@@ -521,6 +521,39 @@ impl TrainingDataGenerator {
         all
     }
 
+    /// Get examples sorted by difficulty (curriculum learning — easy first).
+    pub fn curriculum_ordered() -> Vec<TrainingExample> {
+        let mut all = Self::all_examples();
+        all.sort_by(|a, b| a.difficulty.partial_cmp(&b.difficulty).unwrap_or(std::cmp::Ordering::Equal));
+        all
+    }
+
+    /// Get examples filtered by maximum difficulty (progressive disclosure).
+    pub fn up_to_difficulty(max_difficulty: f64) -> Vec<TrainingExample> {
+        Self::all_examples().into_iter()
+            .filter(|e| e.difficulty <= max_difficulty)
+            .collect()
+    }
+
+    /// Get examples for a specific domain.
+    pub fn domain_examples(domain: &str) -> Vec<TrainingExample> {
+        Self::all_examples().into_iter()
+            .filter(|e| e.domain == domain)
+            .collect()
+    }
+
+    /// Get all unique domain names.
+    pub fn domains() -> Vec<String> {
+        let all = Self::all_examples();
+        let mut domains: Vec<String> = all.iter()
+            .map(|e| e.domain.clone())
+            .collect::<std::collections::HashSet<_>>()
+            .into_iter()
+            .collect();
+        domains.sort();
+        domains
+    }
+
     /// Ingest training examples into a knowledge engine.
     pub fn ingest_into_knowledge(
         engine: &mut KnowledgeEngine,

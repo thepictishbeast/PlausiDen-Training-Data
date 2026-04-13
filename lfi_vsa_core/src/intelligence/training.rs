@@ -197,6 +197,90 @@ impl Trainer {
         (self.total_episodes, self.total_syntheses)
     }
 
+    /// Curriculum training: progressively increase difficulty across epochs.
+    ///
+    /// Epoch 0: only easy examples (difficulty ≤ 0.2)
+    /// Epoch 1: easy + medium (difficulty ≤ 0.35)
+    /// Epoch 2+: all examples
+    ///
+    /// This prevents overwhelming the knowledge engine early and builds
+    /// foundational knowledge before tackling harder material.
+    pub fn train_curriculum(
+        &mut self,
+        knowledge: &mut crate::cognition::knowledge::KnowledgeEngine,
+    ) -> Result<CombinedTrainingResult, HdcError> {
+        info!("// TRAINING: Curriculum mode — progressive difficulty");
+
+        let all = crate::intelligence::training_data::TrainingDataGenerator::all_examples();
+        let mut correction_loop = crate::intelligence::training_data::CorrectionLoop::new();
+        let mut epoch_results = Vec::new();
+        let mut final_checkpoint = None;
+
+        for epoch in 0..self.config.epochs {
+            // Progressive difficulty threshold.
+            let max_difficulty = match epoch {
+                0 => 0.2,
+                1 => 0.35,
+                2 => 0.5,
+                _ => 1.0,
+            };
+
+            let curriculum: Vec<_> = all.iter()
+                .filter(|e| e.difficulty <= max_difficulty)
+                .cloned()
+                .collect();
+
+            info!("// CURRICULUM: Epoch {} — difficulty ≤ {:.2}, {} examples",
+                epoch, max_difficulty, curriculum.len());
+
+            // Ingest curriculum examples.
+            let _ = crate::intelligence::training_data::TrainingDataGenerator::ingest_into_knowledge(
+                knowledge, &curriculum,
+            )?;
+
+            // Self-play.
+            let sp_result = self.run_epoch(epoch)?;
+
+            // Apply mastery decay.
+            knowledge.apply_mastery_decay(0.02);
+
+            // Correction loop.
+            let _ = correction_loop.evaluate_and_correct(knowledge, &curriculum)?;
+            let accuracy = correction_loop.overall_accuracy();
+
+            info!("// CURRICULUM: Epoch {} complete — {}/{} examples, accuracy={:.1}%",
+                epoch, curriculum.len(), all.len(), accuracy * 100.0);
+
+            // Checkpoint.
+            let cp_path = self.config.checkpoint_dir.join(
+                format!("curriculum_epoch_{:04}_{}", epoch,
+                    crate::intelligence::weight_manager::IntelligenceCheckpoint::generate_filename())
+            );
+            let cp = crate::intelligence::weight_manager::IntelligenceCheckpoint::capture(
+                "{}", self.total_episodes, knowledge.concept_count(),
+                correction_loop.total_corrections(), sp_result.syntheses_forged,
+                &format!("Curriculum epoch {} (difficulty ≤ {:.2})", epoch, max_difficulty),
+            );
+            if let Err(e) = cp.save(&cp_path) {
+                debuglog!("Trainer: Checkpoint failed: {:?}", e);
+            } else {
+                final_checkpoint = Some(cp_path);
+            }
+
+            epoch_results.push(sp_result);
+        }
+
+        Ok(CombinedTrainingResult {
+            epochs_completed: self.config.epochs,
+            total_episodes: self.total_episodes as usize,
+            total_syntheses: self.total_syntheses as usize,
+            final_accuracy: correction_loop.overall_accuracy(),
+            total_corrections: correction_loop.total_corrections(),
+            concepts_learned: knowledge.concept_count(),
+            final_checkpoint_path: final_checkpoint,
+        })
+    }
+
     /// Combined training: self-play + knowledge ingestion + correction loop.
     ///
     /// Each epoch:
