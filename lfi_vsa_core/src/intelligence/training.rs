@@ -196,6 +196,87 @@ impl Trainer {
     pub fn stats(&self) -> (u64, u64) {
         (self.total_episodes, self.total_syntheses)
     }
+
+    /// Combined training: self-play + knowledge ingestion + correction loop.
+    ///
+    /// Each epoch:
+    ///   1. Run self-play episodes (forge strategies)
+    ///   2. Ingest training examples into knowledge engine
+    ///   3. Run correction loop to identify and fix gaps
+    ///   4. Checkpoint everything
+    pub fn train_with_knowledge(
+        &mut self,
+        knowledge: &mut crate::cognition::knowledge::KnowledgeEngine,
+        examples: &[crate::intelligence::training_data::TrainingExample],
+    ) -> Result<CombinedTrainingResult, HdcError> {
+        info!("// TRAINING: Combined run — {} epochs, {} examples", self.config.epochs, examples.len());
+
+        let mut epoch_results = Vec::new();
+        let mut correction_loop = crate::intelligence::training_data::CorrectionLoop::new();
+        let mut final_checkpoint = None;
+
+        // Initial knowledge ingestion.
+        let ingested = crate::intelligence::training_data::TrainingDataGenerator::ingest_into_knowledge(
+            knowledge, examples,
+        )?;
+        info!("// TRAINING: Ingested {} training examples", ingested);
+
+        for epoch in 0..self.config.epochs {
+            // 1. Self-play.
+            let sp_result = self.run_epoch(epoch)?;
+
+            // 2. Correction loop — evaluate and teach.
+            let eval_results = correction_loop.evaluate_and_correct(knowledge, examples)?;
+            let accuracy = correction_loop.overall_accuracy();
+            let corrections = correction_loop.total_corrections();
+
+            info!("// TRAINING: Epoch {} — syntheses={}, accuracy={:.1}%, corrections={}",
+                epoch, sp_result.syntheses_forged, accuracy * 100.0, corrections);
+
+            // 3. Checkpoint.
+            let cp_path = self.config.checkpoint_dir.join(
+                format!("combined_epoch_{:04}_{}", epoch,
+                    crate::intelligence::weight_manager::IntelligenceCheckpoint::generate_filename())
+            );
+            let knowledge_json = serde_json::to_string(
+                &crate::intelligence::persistence::KnowledgeStore::new()
+            ).unwrap_or_else(|_| "{}".into());
+            let cp = crate::intelligence::weight_manager::IntelligenceCheckpoint::capture(
+                &knowledge_json, self.total_episodes,
+                knowledge.concept_count(), corrections, sp_result.syntheses_forged,
+                &format!("Combined epoch {} — accuracy {:.1}%", epoch, accuracy * 100.0),
+            );
+            if let Err(e) = cp.save(&cp_path) {
+                debuglog!("Trainer: Checkpoint failed: {:?}", e);
+            } else {
+                final_checkpoint = Some(cp_path);
+            }
+
+            epoch_results.push(sp_result);
+        }
+
+        Ok(CombinedTrainingResult {
+            epochs_completed: self.config.epochs,
+            total_episodes: self.total_episodes as usize,
+            total_syntheses: self.total_syntheses as usize,
+            final_accuracy: correction_loop.overall_accuracy(),
+            total_corrections: correction_loop.total_corrections(),
+            concepts_learned: knowledge.concept_count(),
+            final_checkpoint_path: final_checkpoint,
+        })
+    }
+}
+
+/// Results from combined training (self-play + knowledge + corrections).
+#[derive(Debug)]
+pub struct CombinedTrainingResult {
+    pub epochs_completed: usize,
+    pub total_episodes: usize,
+    pub total_syntheses: usize,
+    pub final_accuracy: f64,
+    pub total_corrections: usize,
+    pub concepts_learned: usize,
+    pub final_checkpoint_path: Option<std::path::PathBuf>,
 }
 
 #[cfg(test)]
@@ -299,6 +380,39 @@ mod tests {
         // Verify we can load it back.
         let loaded = IntelligenceCheckpoint::load(&cp_path)?;
         assert_eq!(loaded.episodes_completed, 2);
+
+        let _ = std::fs::remove_dir_all(&dir);
+        Ok(())
+    }
+
+    #[test]
+    fn test_combined_training() -> Result<(), HdcError> {
+        use crate::intelligence::training_data::TrainingDataGenerator;
+        use crate::cognition::knowledge::KnowledgeEngine;
+
+        let dir = std::path::PathBuf::from("/tmp/lfi_combined_training");
+        let config = TrainingConfig {
+            episodes_per_epoch: 3,
+            mcts_iterations: 5,
+            epochs: 2,
+            enable_provenance: false,
+            checkpoint_dir: dir.clone(),
+            ..Default::default()
+        };
+        let mut trainer = Trainer::new(config);
+        let mut knowledge = KnowledgeEngine::new();
+        let examples = TrainingDataGenerator::all_examples();
+
+        let result = trainer.train_with_knowledge(&mut knowledge, &examples)?;
+
+        assert_eq!(result.epochs_completed, 2);
+        assert!(result.concepts_learned > 50, "Should learn many concepts: {}", result.concepts_learned);
+        assert!(result.final_accuracy > 0.0, "Should have some accuracy");
+        assert!(result.final_checkpoint_path.is_some());
+
+        println!("Combined training: {} episodes, {} syntheses, {:.1}% accuracy, {} concepts, {} corrections",
+            result.total_episodes, result.total_syntheses,
+            result.final_accuracy * 100.0, result.concepts_learned, result.total_corrections);
 
         let _ = std::fs::remove_dir_all(&dir);
         Ok(())
