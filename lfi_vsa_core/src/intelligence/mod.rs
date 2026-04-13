@@ -15,6 +15,7 @@ pub mod benchmark;
 pub mod local_inference;
 pub mod code_eval;
 pub mod self_improvement;
+pub mod cross_domain;
 
 pub use osint::{OsintAnalyzer, OsintSignal};
 pub use web_audit::ConnectivityAxiom;
