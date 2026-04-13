@@ -829,6 +829,64 @@ impl TrainingDataGenerator {
         ]
     }
 
+    // ================================================================
+    // DEFENSIVE AI — Protecting Against Adversarial AI Systems
+    // ================================================================
+    pub fn defensive_ai_examples() -> Vec<TrainingExample> {
+        vec![
+            // AI Threat Detection
+            TrainingExample::new("defensive_ai", "What is adversarial machine learning?", "techniques to fool ML models — adversarial examples, data poisoning, model extraction, evasion attacks", 0.4, &["threats", "ml_security"]),
+            TrainingExample::new("defensive_ai", "What are adversarial examples?", "inputs crafted to cause ML misclassification — imperceptible perturbations that fool neural networks", 0.4, &["attacks", "evasion"]),
+            TrainingExample::new("defensive_ai", "What is data poisoning?", "injecting malicious samples into training data to corrupt the learned model — backdoor attacks, label flipping", 0.45, &["attacks", "training"]),
+            TrainingExample::new("defensive_ai", "What is model extraction?", "querying a deployed model to steal its functionality — recreating proprietary models via API probing", 0.45, &["attacks", "ip_theft"]),
+            TrainingExample::new("defensive_ai", "What is prompt injection against LLMs?", "crafting inputs that override system instructions — direct injection, indirect injection via context", 0.4, &["attacks", "llm"]),
+            TrainingExample::new("defensive_ai", "What is AI-powered surveillance?", "mass monitoring using facial recognition, behavioral analytics, social media scraping, predictive policing", 0.3, &["surveillance", "privacy"]),
+            // Defense Techniques
+            TrainingExample::new("defensive_ai", "What is adversarial training?", "training on adversarial examples to make model robust — augment training data with attacks", 0.4, &["defense", "robustness"]),
+            TrainingExample::new("defensive_ai", "What is input validation for AI?", "sanitizing inputs before feeding to model — detecting anomalous distributions, out-of-domain queries, injection patterns", 0.35, &["defense", "input"]),
+            TrainingExample::new("defensive_ai", "What is model watermarking?", "embedding hidden patterns in model outputs to detect unauthorized copies — digital fingerprinting for AI", 0.4, &["defense", "ip_protection"]),
+            TrainingExample::new("defensive_ai", "What is differential privacy?", "adding calibrated noise to data/queries to protect individual records while preserving aggregate statistics", 0.45, &["defense", "privacy"]),
+            TrainingExample::new("defensive_ai", "What is federated learning for defense?", "training models across distributed devices without centralizing data — privacy-preserving collaborative learning", 0.4, &["defense", "privacy"]),
+            TrainingExample::new("defensive_ai", "What is homomorphic encryption for AI?", "running inference on encrypted data — model never sees plaintext, user never reveals data", 0.5, &["defense", "crypto"]),
+            // Counter-surveillance
+            TrainingExample::new("defensive_ai", "How to detect AI-powered tracking?", "anomalous network traffic patterns, camera detection (RF/IR), browser fingerprinting checks, metadata stripping", 0.4, &["counter_surveillance"]),
+            TrainingExample::new("defensive_ai", "What is metadata stripping?", "removing EXIF, GPS, device identifiers from files before sharing — prevents location/identity tracking", 0.3, &["counter_surveillance", "opsec"]),
+            TrainingExample::new("defensive_ai", "What is traffic analysis resistance?", "constant-rate padding, onion routing, mix networks — prevent AI from inferring behavior from traffic patterns", 0.45, &["counter_surveillance", "networking"]),
+            TrainingExample::new("defensive_ai", "What is adversarial perturbation for privacy?", "adding subtle noise to images/voice that fools facial/voice recognition without visible change to humans", 0.5, &["counter_surveillance", "privacy"]),
+            // Anti-AI Warfare
+            TrainingExample::new("defensive_ai", "How to defend against deepfakes?", "detection via inconsistencies (blinking, lighting, audio sync), blockchain provenance, watermarked media", 0.4, &["deepfake", "detection"]),
+            TrainingExample::new("defensive_ai", "How to defend against AI-generated phishing?", "behavioral analysis (writing style changes), sender verification, link analysis, AI-assisted detection of AI-written text", 0.4, &["phishing", "detection"]),
+            TrainingExample::new("defensive_ai", "How to defend against automated vulnerability scanners?", "rate limiting, honeypots, deceptive responses, moving target defense, behavioral fingerprinting of scanners", 0.4, &["defense", "deception"]),
+            TrainingExample::new("defensive_ai", "What is a honeypot for AI?", "decoy systems that detect and analyze automated attacks — trap AI scanners, log their behavior, feed false data", 0.35, &["defense", "deception"]),
+            TrainingExample::new("defensive_ai", "What is moving target defense?", "continuously changing system configuration (ports, addresses, keys) so AI attackers can't build stable models", 0.45, &["defense", "dynamic"]),
+            // PlausiDen-specific defensive doctrine
+            TrainingExample::new("defensive_ai", "What is sovereign AI defense?", "AI system that operates independently without reliance on external cloud services — resilient to supply chain compromise", 0.4, &["plausiden", "sovereignty"]),
+            TrainingExample::new("defensive_ai", "What is epistemic defense?", "ensuring AI reasoning is traceable and honest — provenance tracking prevents AI from being manipulated into false conclusions", 0.5, &["plausiden", "provenance"]),
+            TrainingExample::new("defensive_ai", "What is crypto-epistemology for defense?", "cryptographic commitments to beliefs prevent post-hoc manipulation — AI can prove what it believed at time T", 0.5, &["plausiden", "crypto"]),
+            TrainingExample::new("defensive_ai", "What is plausible deniability in AI?", "system architecture that protects operator identity — onion routing, zero-knowledge proofs, compartmentalized knowledge", 0.5, &["plausiden", "privacy"]),
+        ]
+    }
+
+    // ================================================================
+    // ANTI-SURVEILLANCE — Privacy Protection Training
+    // ================================================================
+    pub fn anti_surveillance_examples() -> Vec<TrainingExample> {
+        vec![
+            TrainingExample::new("anti_surveillance", "What is Tor and how does it protect?", "onion routing through 3+ relays — each relay only knows previous and next hop, never full path", 0.3, &["privacy", "networking"]),
+            TrainingExample::new("anti_surveillance", "What is a VPN vs Tor?", "VPN: single encrypted tunnel to provider (trusts provider). Tor: multi-hop with no single trust point (trustless)", 0.3, &["privacy", "comparison"]),
+            TrainingExample::new("anti_surveillance", "What is browser fingerprinting?", "identifying users by browser configuration, fonts, screen size, WebGL, canvas — unique without cookies", 0.35, &["tracking", "web"]),
+            TrainingExample::new("anti_surveillance", "How to resist browser fingerprinting?", "Tor Browser (standardized fingerprint), disable JavaScript, use standard fonts/resolution, Brave with shields", 0.35, &["defense", "web"]),
+            TrainingExample::new("anti_surveillance", "What is DNS over HTTPS (DoH)?", "encrypts DNS queries inside HTTPS — prevents ISP/network from seeing which domains you visit", 0.25, &["privacy", "dns"]),
+            TrainingExample::new("anti_surveillance", "What is encrypted DNS (DoT vs DoH)?", "DoT: DNS over TLS on port 853 (visible as DNS). DoH: DNS over HTTPS on port 443 (blends with web traffic)", 0.3, &["privacy", "dns"]),
+            TrainingExample::new("anti_surveillance", "What is a warrant canary?", "statement that no secret warrants have been received — removal signals a gag order without violating it", 0.3, &["legal", "transparency"]),
+            TrainingExample::new("anti_surveillance", "What is OPSEC for activists?", "operational security: compartmentalize identity, use burner devices, air-gap sensitive work, verify contacts out-of-band", 0.35, &["opsec", "activism"]),
+            TrainingExample::new("anti_surveillance", "What is Signal and why is it trusted?", "end-to-end encrypted messaging with forward secrecy, disappearing messages, minimal metadata — open source, audited", 0.25, &["tools", "messaging"]),
+            TrainingExample::new("anti_surveillance", "What is Tails OS?", "amnesic live OS that routes all traffic through Tor — leaves no trace on the host machine after shutdown", 0.3, &["tools", "os"]),
+            TrainingExample::new("anti_surveillance", "What is full disk encryption?", "encrypting entire disk so data is inaccessible without key — LUKS on Linux, BitLocker on Windows, FileVault on macOS", 0.25, &["encryption", "storage"]),
+            TrainingExample::new("anti_surveillance", "What is a dead man's switch?", "system that triggers action if operator fails to check in — publishes keys, sends alerts, destroys data", 0.4, &["tools", "contingency"]),
+        ]
+    }
+
     pub fn all_examples() -> Vec<TrainingExample> {
         let mut all = Vec::new();
         all.extend(Self::math_examples());
@@ -878,6 +936,8 @@ impl TrainingDataGenerator {
         all.extend(Self::attack_methodology_examples());
         all.extend(Self::creative_strategy_examples());
         all.extend(Self::linux_sysadmin_examples());
+        all.extend(Self::defensive_ai_examples());
+        all.extend(Self::anti_surveillance_examples());
         all
     }
 
@@ -945,6 +1005,8 @@ impl TrainingDataGenerator {
             ("methodology", vec![("recon", 0.6), ("exploitation", 0.6), ("social_eng", 0.5), ("strategy", 0.7)]),
             ("strategy", vec![("reasoning", 0.7), ("methodology", 0.7), ("logic", 0.5)]),
             ("linux", vec![("os", 0.9), ("security", 0.5), ("networking", 0.5), ("code", 0.4)]),
+            ("defensive_ai", vec![("security", 0.9), ("ai_ml", 0.8), ("crypto", 0.6), ("psa", 0.7), ("anti_surveillance", 0.7)]),
+            ("anti_surveillance", vec![("defensive_ai", 0.7), ("security", 0.6), ("crypto", 0.7), ("networking", 0.5), ("psa", 0.8)]),
         ]
     }
 
