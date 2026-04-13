@@ -128,6 +128,8 @@ impl TrainingDataGenerator {
             TrainingExample::new("biology", "What is ATP?", "adenosine triphosphate — cellular energy currency", 0.25, &["biochemistry"]),
             TrainingExample::new("biology", "What is CRISPR?", "gene editing technology using Cas9 enzyme", 0.35, &["genetics", "biotech"]),
             TrainingExample::new("biology", "How many chromosomes do humans have?", "46 (23 pairs)", 0.1, &["genetics"]),
+            TrainingExample::new("biology", "What is evolution by natural selection?", "organisms with advantageous traits survive and reproduce more — gradual change over generations", 0.2, &["evolution"]),
+            TrainingExample::new("biology", "What is an enzyme?", "biological catalyst that speeds up chemical reactions without being consumed", 0.2, &["biochemistry"]),
         ]
     }
 
@@ -240,6 +242,8 @@ impl TrainingDataGenerator {
             TrainingExample::new("medicine", "Normal resting heart rate", "60-100 bpm", 0.1, &["vitals"]),
             TrainingExample::new("medicine", "What is an antibiotic?", "medication that kills or inhibits bacteria", 0.15, &["pharmacology"]),
             TrainingExample::new("medicine", "What is CPR?", "cardiopulmonary resuscitation — chest compressions + rescue breathing", 0.1, &["emergency"]),
+            TrainingExample::new("medicine", "What is a vaccine?", "weakened/inactivated pathogen or mRNA that trains the immune system to fight infection", 0.15, &["immunology"]),
+            TrainingExample::new("medicine", "What is the blood-brain barrier?", "selective membrane preventing most substances in blood from entering the brain", 0.25, &["neurology"]),
         ]
     }
 
@@ -339,6 +343,8 @@ impl TrainingDataGenerator {
             TrainingExample::new("history", "What was the Renaissance?", "14th-17th century European cultural rebirth in art, science, philosophy", 0.2, &["culture"]),
             TrainingExample::new("history", "What was the Industrial Revolution?", "transition from agrarian to industrial economy, starting ~1760 in Britain", 0.2, &["economics"]),
             TrainingExample::new("history", "What is the Universal Declaration of Human Rights?", "1948 UN document establishing fundamental human rights for all people", 0.2, &["rights"]),
+            TrainingExample::new("history", "What was the Cold War?", "geopolitical tension between US/NATO and USSR 1947-1991 — nuclear arms race, proxy wars", 0.2, &["geopolitics"]),
+            TrainingExample::new("history", "What was the Moon landing?", "Apollo 11, July 20 1969 — first humans on the Moon (Armstrong and Aldrin)", 0.1, &["space"]),
         ]
     }
 
@@ -488,6 +494,7 @@ impl TrainingDataGenerator {
             TrainingExample::new("common_sense", "Does hot air rise or sink?", "rises — hot air is less dense than cold air", 0.1, &["physics"]),
             TrainingExample::new("common_sense", "Why does the moon have phases?", "we see different amounts of its sunlit half as it orbits Earth", 0.2, &["astronomy"]),
             TrainingExample::new("common_sense", "Why do we have seasons?", "Earth's axial tilt (23.5 degrees) causes varying sunlight angles throughout the year", 0.2, &["astronomy"]),
+            TrainingExample::new("common_sense", "Why is the sky blue?", "Rayleigh scattering — shorter blue wavelengths scatter more in the atmosphere", 0.2, &["physics"]),
         ]
     }
 
