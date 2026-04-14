@@ -210,6 +210,63 @@ async fn test_metrics_endpoint_returns_200_and_text_plain() {
     let _text = std::str::from_utf8(&bytes).expect("utf8");
 }
 
+/// POST /api/knowledge/learn requires authentication.
+#[tokio::test]
+async fn test_knowledge_learn_requires_auth() {
+    let app = lfi_vsa_core::api::create_router().expect("router");
+    let body = serde_json::json!({
+        "concept": "test_concept_via_http",
+        "related": ["a", "b"]
+    }).to_string();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/knowledge/learn")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap(),
+        )
+        .await
+        .expect("request");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let json: Value = serde_json::from_slice(&bytes).expect("valid JSON");
+    assert_eq!(json["status"], "rejected",
+        "unauthenticated learn must be rejected, got {}", json);
+}
+
+/// POST /api/knowledge/learn rejects oversize related list.
+#[tokio::test]
+async fn test_knowledge_learn_rejects_oversize_related() {
+    let app = lfi_vsa_core::api::create_router().expect("router");
+    let mut related = Vec::with_capacity(100);
+    for i in 0..100 { related.push(format!("rel_{}", i)); }
+    let body = serde_json::json!({
+        "concept": "x",
+        "related": related,
+    }).to_string();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/knowledge/learn")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap(),
+        )
+        .await
+        .expect("request");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let json: Value = serde_json::from_slice(&bytes).expect("valid JSON");
+    assert_eq!(json["status"], "rejected");
+}
+
 /// GET /api/knowledge/concepts returns a list with mastery + relations.
 #[tokio::test]
 async fn test_knowledge_concepts_endpoint_lists_seeded_concepts() {

@@ -71,6 +71,14 @@ pub struct ReviewRequest {
     pub quality: u8,
 }
 
+/// POST /api/knowledge/learn body.
+#[derive(Deserialize)]
+pub struct LearnRequest {
+    pub concept: String,
+    #[serde(default)]
+    pub related: Vec<String>,
+}
+
 // ============================================================
 // WebSocket: Telemetry Stream
 // ============================================================
@@ -477,6 +485,55 @@ async fn knowledge_review_handler(
     }))
 }
 
+/// POST /api/knowledge/learn — teach LFI a new concept (authenticated only).
+///
+/// SECURITY: requires authentication. KnowledgeEngine.learn rejects
+/// untrusted teaching outright, but exposing this through HTTP would
+/// still let any caller burn CPU cycles registering noise. Auth gates
+/// the entry point.
+async fn knowledge_learn_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<LearnRequest>,
+) -> impl IntoResponse {
+    if req.concept.is_empty() || req.concept.len() > 256 {
+        return Json(json!({
+            "status": "rejected",
+            "reason": "concept must be 1..=256 bytes"
+        }));
+    }
+    if req.related.len() > 64 {
+        return Json(json!({
+            "status": "rejected",
+            "reason": "related list capped at 64"
+        }));
+    }
+
+    let mut agent = state.agent.lock();
+    if !agent.authenticated {
+        warn!("// AUDIT: /api/knowledge/learn rejected — not authenticated.");
+        return Json(json!({
+            "status": "rejected",
+            "reason": "authentication required"
+        }));
+    }
+
+    let related_refs: Vec<&str> = req.related.iter().map(|s| s.as_str()).collect();
+    match agent.reasoner.knowledge.learn(&req.concept, &related_refs, true) {
+        Ok(()) => {
+            let mastery = agent.reasoner.knowledge.mastery_of(&req.concept);
+            Json(json!({
+                "status": "ok",
+                "concept": req.concept,
+                "mastery": mastery,
+            }))
+        }
+        Err(e) => Json(json!({
+            "status": "error",
+            "reason": format!("learn failed: {}", e),
+        })),
+    }
+}
+
 /// GET /api/knowledge/concepts — list every known concept with mastery.
 async fn knowledge_concepts_handler(
     State(state): State<Arc<AppState>>,
@@ -720,6 +777,7 @@ pub fn create_router() -> Result<Router, Box<dyn std::error::Error>> {
         .route("/api/knowledge/review", post(knowledge_review_handler))
         .route("/api/knowledge/due", get(knowledge_due_handler))
         .route("/api/knowledge/concepts", get(knowledge_concepts_handler))
+        .route("/api/knowledge/learn", post(knowledge_learn_handler))
         .route("/api/provenance/stats", get(provenance_stats_handler))
         .route("/api/provenance/export", get(provenance_export_handler))
         .route("/api/provenance/compact", post(provenance_compact_handler))
