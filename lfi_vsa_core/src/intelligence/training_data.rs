@@ -22,7 +22,7 @@ pub struct TrainingExample {
 }
 
 impl TrainingExample {
-    fn new(domain: &str, input: &str, output: &str, diff: f64, tags: &[&str]) -> Self {
+    pub fn new(domain: &str, input: &str, output: &str, diff: f64, tags: &[&str]) -> Self {
         Self {
             domain: domain.into(), input: input.into(),
             expected_output: output.into(), difficulty: diff,
