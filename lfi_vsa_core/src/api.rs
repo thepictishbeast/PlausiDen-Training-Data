@@ -62,6 +62,14 @@ pub struct ThinkRequest {
     pub input: String,
 }
 
+/// POST /api/knowledge/review body.
+#[derive(Deserialize)]
+pub struct ReviewRequest {
+    pub concept: String,
+    /// Quality score 0–5 (SM-2). Clamped to 5 if higher.
+    pub quality: u8,
+}
+
 // ============================================================
 // WebSocket: Telemetry Stream
 // ============================================================
@@ -426,6 +434,49 @@ async fn think_handler(
 }
 
 // ============================================================
+// REST: Knowledge / Spaced Repetition
+// ============================================================
+
+/// POST /api/knowledge/review — record a graded review for a concept.
+/// Updates KnowledgeEngine mastery and the SM-2 scheduler.
+async fn knowledge_review_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<ReviewRequest>,
+) -> impl IntoResponse {
+    if req.concept.is_empty() || req.concept.len() > 256 {
+        return Json(json!({
+            "status": "rejected",
+            "reason": "concept must be 1..=256 bytes"
+        }));
+    }
+    let mut agent = state.agent.lock();
+    let before = agent.reasoner.knowledge.mastery_of(&req.concept);
+    agent.reasoner.knowledge.review(&req.concept, req.quality);
+    let after = agent.reasoner.knowledge.mastery_of(&req.concept);
+    Json(json!({
+        "status": "ok",
+        "concept": req.concept,
+        "quality": req.quality.min(5),
+        "mastery_before": before,
+        "mastery_after": after,
+    }))
+}
+
+/// GET /api/knowledge/due — concepts currently due for review (most overdue first).
+async fn knowledge_due_handler(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let agent = state.agent.lock();
+    let due = agent.reasoner.knowledge.concepts_due_for_review(50);
+    let names: Vec<String> = due.iter().map(|c| c.name.clone()).collect();
+    Json(json!({
+        "status": "ok",
+        "count": names.len(),
+        "concepts": names,
+    }))
+}
+
+// ============================================================
 // REST: Reasoning Provenance
 // ============================================================
 
@@ -508,6 +559,34 @@ async fn provenance_export_handler(
     }
 }
 
+/// POST /api/provenance/compact — reclaim dead entries (ref_count = 0).
+/// SECURITY: requires authentication. Compaction invalidates existing
+/// TraceIds, so this must only run when no external references are in
+/// flight — typically called between sessions by an administrator.
+async fn provenance_compact_handler(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let agent = state.agent.lock();
+    if !agent.authenticated {
+        warn!("// AUDIT: /api/provenance/compact rejected — not authenticated.");
+        return Json(json!({
+            "status": "rejected",
+            "reason": "authentication required"
+        }));
+    }
+    let mut engine = agent.provenance.lock();
+    let before = engine.arena.len();
+    let removed = engine.arena.compact();
+    let after = engine.arena.len();
+    info!("// AUDIT: provenance compact: {} → {} (removed {})", before, after, removed);
+    Json(json!({
+        "status": "ok",
+        "before": before,
+        "after": after,
+        "removed": removed,
+    }))
+}
+
 /// POST /api/provenance/reset — wipe the arena and start fresh.
 /// SECURITY: requires authentication; destructive and irreversible.
 async fn provenance_reset_handler(
@@ -587,8 +666,11 @@ pub fn create_router() -> Result<Router, Box<dyn std::error::Error>> {
         .route("/api/qos", get(qos_handler))
         .route("/api/health", get(health_handler))
         .route("/api/think", post(think_handler))
+        .route("/api/knowledge/review", post(knowledge_review_handler))
+        .route("/api/knowledge/due", get(knowledge_due_handler))
         .route("/api/provenance/stats", get(provenance_stats_handler))
         .route("/api/provenance/export", get(provenance_export_handler))
+        .route("/api/provenance/compact", post(provenance_compact_handler))
         .route("/api/provenance/reset", post(provenance_reset_handler))
         .route("/api/provenance/:conclusion_id", get(provenance_explain_handler))
         .route("/api/provenance/:conclusion_id/chain", get(provenance_chain_handler))

@@ -175,10 +175,13 @@ The axum-based server exposes a REST + WebSocket API. All JSON. Handlers are in
 | `/api/tier` | POST | yes | Manual tier switch (Pulse / Bridge / BigBrain) |
 | `/api/search` | POST | no | Web search with cross-reference |
 | `/api/think` | POST | no | Think **with provenance**, returns `conclusion_id` |
+| `/api/knowledge/review` | POST | no | Graded review (quality 0–5) — updates mastery + SM-2 schedule |
+| `/api/knowledge/due` | GET | no | Concepts currently due for spaced-repetition review |
 | `/api/provenance/stats` | GET | no | Trace counter + traced/reconstructed note |
 | `/api/provenance/:id` | GET | no | Explanation tagged Traced vs Reconstructed |
 | `/api/provenance/:id/chain` | GET | no | Full `Vec<TraceEntry>` for a conclusion |
 | `/api/provenance/export` | GET | **yes** | Whole arena as JSON (audit download) |
+| `/api/provenance/compact` | POST | **yes** | Reclaim dead entries (invalidates TraceIds) |
 | `/api/provenance/reset` | POST | **yes** | Wipe the arena (destructive) |
 | `/ws/telemetry` | WS | no | Real-time substrate telemetry stream |
 | `/ws/chat` | WS | no | Chat with provenance; each response includes `conclusion_id` |
