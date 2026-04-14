@@ -384,30 +384,59 @@ impl AnswerVerifier {
             };
         }
 
-        // 2. Minimal normalization (whitespace + case).
+        // Compute normalized forms once.
         let ans_min = AnswerNormalizer::normalize_minimal(answer);
         let exp_min = AnswerNormalizer::normalize_minimal(expected);
-        if ans_min.contains(&exp_min) || exp_min.contains(&ans_min) {
-            return VerifyResult {
-                is_correct: true,
-                normalized_answer: ans_min,
-                normalized_expected: exp_min,
-                matched_mode: Some("MinimalNormalization".into()),
-                confidence: 0.95,
-            };
-        }
-
-        // 3. Full normalization.
         let ans_norm = AnswerNormalizer::normalize(answer);
         let exp_norm = AnswerNormalizer::normalize(expected);
-        if ans_norm.contains(&exp_norm) || exp_norm.contains(&ans_norm) {
+
+        // For short ALPHABETICAL expected answers (≤4 chars, all letters),
+        // use whole-word matching to avoid false positives like "yes, no problem"
+        // matching "no". Numeric short answers (like "5050", "15N") go through
+        // the normal match pipeline.
+        let is_short_alphabetical = exp_min.len() <= 4
+            && exp_min.chars().all(|c| c.is_alphabetic());
+
+        if is_short_alphabetical {
+            if Self::whole_word_match(answer, expected) {
+                return VerifyResult {
+                    is_correct: true,
+                    normalized_answer: ans_norm.clone(),
+                    normalized_expected: exp_norm.clone(),
+                    matched_mode: Some("WholeWordShort".into()),
+                    confidence: 0.95,
+                };
+            }
+            // Short alphabetical, whole-word failed — reject (no fuzzy match).
             return VerifyResult {
-                is_correct: true,
+                is_correct: false,
                 normalized_answer: ans_norm,
                 normalized_expected: exp_norm,
-                matched_mode: Some("SemanticNormalization".into()),
-                confidence: 0.9,
+                matched_mode: None,
+                confidence: 0.0,
             };
+        } else {
+            // 2. Minimal normalization.
+            if ans_min.contains(&exp_min) || exp_min.contains(&ans_min) {
+                return VerifyResult {
+                    is_correct: true,
+                    normalized_answer: ans_min,
+                    normalized_expected: exp_min,
+                    matched_mode: Some("MinimalNormalization".into()),
+                    confidence: 0.95,
+                };
+            }
+
+            // 3. Full normalization.
+            if ans_norm.contains(&exp_norm) || exp_norm.contains(&ans_norm) {
+                return VerifyResult {
+                    is_correct: true,
+                    normalized_answer: ans_norm,
+                    normalized_expected: exp_norm,
+                    matched_mode: Some("SemanticNormalization".into()),
+                    confidence: 0.9,
+                };
+            }
         }
 
         // 4. Numeric equivalence.
@@ -485,6 +514,40 @@ impl AnswerVerifier {
             matched_mode: None,
             confidence: 0.0,
         }
+    }
+
+    /// Whole-word match: "no" matches "The answer is no." but NOT "yes, no problem"
+    /// where "no" is part of "no problem" which contextually means "sure".
+    /// BUG ASSUMPTION: uses simple word tokenization. "No." counts as whole word.
+    fn whole_word_match(answer: &str, expected: &str) -> bool {
+        let expected_lower = expected.trim().to_lowercase();
+        let answer_lower = answer.to_lowercase();
+
+        // Handle common affirmative/negative forms separately.
+        let exp_tokens: Vec<&str> = expected_lower.split(|c: char| !c.is_alphanumeric())
+            .filter(|s| !s.is_empty())
+            .collect();
+        let ans_tokens: Vec<&str> = answer_lower.split(|c: char| !c.is_alphanumeric())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        // For "no" specifically, check for NEGATIVE context (not "no problem", "no worries").
+        let negative_forms = ["no", "nope", "false", "incorrect"];
+        let positive_forms = ["yes", "yep", "true", "correct", "affirmative"];
+
+        if negative_forms.contains(&expected_lower.as_str()) {
+            // Expected is negative — answer must be negative.
+            return ans_tokens.iter().any(|t| negative_forms.contains(t))
+                && !ans_tokens.iter().any(|t| positive_forms.contains(t));
+        }
+        if positive_forms.contains(&expected_lower.as_str()) {
+            // Expected is positive — answer must be positive.
+            return ans_tokens.iter().any(|t| positive_forms.contains(t));
+        }
+
+        // General case: whole-word substring match.
+        ans_tokens.iter().any(|t| *t == expected_lower.as_str())
+            || exp_tokens.iter().all(|t| ans_tokens.contains(t))
     }
 
     /// Extract numeric tokens from a string.
@@ -652,6 +715,47 @@ mod tests {
     fn test_numeric_equivalent_handles_integers() {
         assert!(AnswerNormalizer::numeric_equivalent("5", "5.0", 0.001));
         assert!(AnswerNormalizer::numeric_equivalent("0", "0.0", 0.001));
+    }
+
+    #[test]
+    fn test_edge_case_no_vs_no_problem() {
+        // "yes, no problem" should NOT match expected "no" (ambiguous negative).
+        let r = AnswerVerifier::verify("yes, no problem", "no");
+        assert!(!r.is_correct, "'yes no problem' is affirmative, shouldn't match 'no'");
+    }
+
+    #[test]
+    fn test_edge_case_short_affirmative() {
+        // "The answer is yes." should match expected "yes".
+        let r = AnswerVerifier::verify("The answer is yes.", "yes");
+        assert!(r.is_correct, "'the answer is yes' should match 'yes'");
+    }
+
+    #[test]
+    fn test_edge_case_short_negative() {
+        // "No, that's incorrect." should match "no".
+        let r = AnswerVerifier::verify("No, that's incorrect.", "no");
+        assert!(r.is_correct, "'no, that's incorrect' should match 'no'");
+    }
+
+    #[test]
+    fn test_edge_case_mixed_signals() {
+        // "Yes, but actually no" — ambiguous, should NOT match "no" purely.
+        let r = AnswerVerifier::verify("Yes, but actually no", "no");
+        // With our heuristic: contains both positive and negative forms → reject.
+        assert!(!r.is_correct, "Mixed signals should not count as negative");
+    }
+
+    #[test]
+    fn test_user_requested_derivative_case() {
+        // User explicitly requested this test: "ask what the derivative of 3x^4 is.
+        // make sure it responds with 12x^3"
+        let answer = "The derivative of \\(3x^4\\) is \\(12x^3\\).";
+        let expected = "12x^3";
+        let result = AnswerVerifier::verify(answer, expected);
+        assert!(result.is_correct,
+            "12x^3 should be recognized despite LaTeX + commentary. Got: {:?}",
+            result.matched_mode);
     }
 
     #[test]
