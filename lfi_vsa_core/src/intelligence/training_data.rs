@@ -672,6 +672,152 @@ impl TrainingDataGenerator {
     }
 
     // ================================================================
+    // ADVANCED AI/ML — Training Techniques, Architectures, Theory
+    // ================================================================
+    pub fn ai_ml_advanced_examples() -> Vec<TrainingExample> {
+        vec![
+            // Training techniques
+            TrainingExample::new("ai_ml_advanced", "What is dropout in neural networks?",
+                "regularization technique — randomly zero out activations during training to prevent co-adaptation", 0.4, &["regularization"]),
+            TrainingExample::new("ai_ml_advanced", "What is batch normalization?",
+                "normalize layer inputs by subtracting batch mean and dividing by batch std — speeds up training", 0.4, &["normalization"]),
+            TrainingExample::new("ai_ml_advanced", "What is attention in transformers?",
+                "weighted combination of values based on query-key similarity — softmax(QK^T/sqrt(d))V", 0.5, &["transformers"]),
+            TrainingExample::new("ai_ml_advanced", "What is RLHF?",
+                "reinforcement learning from human feedback — train reward model from preferences, optimize policy with PPO", 0.5, &["rl"]),
+            TrainingExample::new("ai_ml_advanced", "What is LoRA fine-tuning?",
+                "Low-Rank Adaptation — freeze base weights, train small low-rank matrices, much less memory", 0.45, &["fine_tuning"]),
+            TrainingExample::new("ai_ml_advanced", "What is the Adam optimizer?",
+                "adaptive moment estimation — combines momentum and RMSprop, tracks first and second moments", 0.4, &["optimization"]),
+            TrainingExample::new("ai_ml_advanced", "What is chain-of-thought prompting?",
+                "elicit step-by-step reasoning by example — improves LLM performance on multi-step problems", 0.35, &["prompting"]),
+            TrainingExample::new("ai_ml_advanced", "What is in-context learning?",
+                "LLM learns task from examples in the prompt without updating weights — emergent capability", 0.4, &["llm"]),
+
+            // Architectures
+            TrainingExample::new("ai_ml_advanced", "What is a CNN?",
+                "Convolutional Neural Network — uses convolution filters + pooling to learn spatial features (images, audio)", 0.3, &["architectures"]),
+            TrainingExample::new("ai_ml_advanced", "What is an RNN?",
+                "Recurrent Neural Network — processes sequences by maintaining hidden state across timesteps", 0.3, &["architectures"]),
+            TrainingExample::new("ai_ml_advanced", "What is an LSTM?",
+                "Long Short-Term Memory — RNN with gates (forget/input/output) to control information flow over long sequences", 0.4, &["architectures"]),
+            TrainingExample::new("ai_ml_advanced", "What is a Mixture of Experts?",
+                "sparse architecture where a router sends tokens to specialized sub-networks — scales parameters without inference cost", 0.5, &["architectures"]),
+            TrainingExample::new("ai_ml_advanced", "What is a diffusion model?",
+                "generative model that learns to reverse gradual noise addition — used for image generation (DALL-E, Stable Diffusion)", 0.45, &["generative"]),
+            TrainingExample::new("ai_ml_advanced", "What is a GAN?",
+                "Generative Adversarial Network — generator and discriminator train against each other", 0.4, &["generative"]),
+
+            // Theory
+            TrainingExample::new("ai_ml_advanced", "What is the curse of dimensionality?",
+                "as dimensions increase, data becomes sparse and distances become less meaningful", 0.4, &["theory"]),
+            TrainingExample::new("ai_ml_advanced", "What is the universal approximation theorem?",
+                "neural network with one hidden layer can approximate any continuous function given enough neurons", 0.45, &["theory"]),
+            TrainingExample::new("ai_ml_advanced", "What is regularization?",
+                "technique to prevent overfitting — L1/L2 penalties, dropout, early stopping, data augmentation", 0.3, &["theory"]),
+            TrainingExample::new("ai_ml_advanced", "What is the VC dimension?",
+                "largest number of points a classifier can shatter (correctly classify all 2^n labelings) — measures capacity", 0.55, &["learning_theory"]),
+            TrainingExample::new("ai_ml_advanced", "What is PAC learning?",
+                "Probably Approximately Correct — framework for sample complexity: enough data → low error with high probability", 0.6, &["learning_theory"]),
+
+            // Practical concerns
+            TrainingExample::new("ai_ml_advanced", "What causes exploding gradients?",
+                "gradient magnitudes grow exponentially through layers — mitigated by gradient clipping or better init", 0.4, &["training_issues"]),
+            TrainingExample::new("ai_ml_advanced", "What is vanishing gradient?",
+                "gradients shrink toward zero in deep networks — mitigated by ReLU, skip connections, proper initialization", 0.4, &["training_issues"]),
+        ]
+    }
+
+    // ================================================================
+    // CHEMISTRY DEEP DIVE
+    // ================================================================
+    pub fn chemistry_advanced_examples() -> Vec<TrainingExample> {
+        vec![
+            TrainingExample::new("chemistry_advanced", "What is a mole?",
+                "6.022 * 10^23 particles — Avogadro's number, defines the mole unit", 0.2, &["fundamentals"]),
+            TrainingExample::new("chemistry_advanced", "What is the atomic number?",
+                "number of protons in the nucleus — determines the element", 0.15, &["atomic"]),
+            TrainingExample::new("chemistry_advanced", "What is electronegativity?",
+                "atom's tendency to attract shared electrons in a chemical bond", 0.3, &["bonding"]),
+            TrainingExample::new("chemistry_advanced", "What is activation energy?",
+                "minimum energy required to initiate a chemical reaction", 0.3, &["kinetics"]),
+            TrainingExample::new("chemistry_advanced", "What is a catalyst?",
+                "substance that speeds up a reaction without being consumed — lowers activation energy", 0.25, &["kinetics"]),
+            TrainingExample::new("chemistry_advanced", "What is entropy (thermodynamic)?",
+                "measure of disorder — S = k*ln(W), tends to increase in isolated systems (2nd law)", 0.35, &["thermodynamics"]),
+            TrainingExample::new("chemistry_advanced", "What is Gibbs free energy?",
+                "G = H - TS — predicts reaction spontaneity (negative ΔG = spontaneous)", 0.4, &["thermodynamics"]),
+            TrainingExample::new("chemistry_advanced", "What is Le Chatelier's principle?",
+                "system at equilibrium responds to disturbance by shifting to counteract the change", 0.35, &["equilibrium"]),
+            TrainingExample::new("chemistry_advanced", "What is an acid (Bronsted-Lowry)?",
+                "proton donor — substance that releases H+ in solution", 0.2, &["acids_bases"]),
+            TrainingExample::new("chemistry_advanced", "What is a base (Bronsted-Lowry)?",
+                "proton acceptor — substance that accepts H+", 0.2, &["acids_bases"]),
+            TrainingExample::new("chemistry_advanced", "What is oxidation?",
+                "loss of electrons — OIL (Oxidation Is Loss)", 0.2, &["redox"]),
+            TrainingExample::new("chemistry_advanced", "What is reduction?",
+                "gain of electrons — RIG (Reduction Is Gain)", 0.2, &["redox"]),
+            TrainingExample::new("chemistry_advanced", "What is a buffer solution?",
+                "resists pH change on addition of small amounts of acid/base — contains weak acid + conjugate base", 0.4, &["acids_bases"]),
+            TrainingExample::new("chemistry_advanced", "What is a covalent bond?",
+                "shared pair of electrons between two atoms — typical of non-metals", 0.25, &["bonding"]),
+            TrainingExample::new("chemistry_advanced", "What is an ionic bond?",
+                "electrostatic attraction from electron transfer — metal + non-metal", 0.25, &["bonding"]),
+        ]
+    }
+
+    // ================================================================
+    // ADVANCED MATH — Number Theory, Abstract Algebra, Topology
+    // ================================================================
+    pub fn math_deeper_examples() -> Vec<TrainingExample> {
+        vec![
+            // Number theory
+            TrainingExample::new("math_deeper", "What is a prime number?",
+                "natural number > 1 with exactly two divisors: 1 and itself", 0.15, &["number_theory"]),
+            TrainingExample::new("math_deeper", "What is Fermat's little theorem?",
+                "if p is prime, a^p ≡ a (mod p) — used in primality testing and RSA", 0.4, &["number_theory"]),
+            TrainingExample::new("math_deeper", "What is the fundamental theorem of arithmetic?",
+                "every integer > 1 has a unique prime factorization (up to order)", 0.3, &["number_theory"]),
+            TrainingExample::new("math_deeper", "What is GCD?",
+                "greatest common divisor — largest integer dividing both inputs (Euclidean algorithm)", 0.2, &["number_theory"]),
+            TrainingExample::new("math_deeper", "What is Euler's totient?",
+                "φ(n) = count of integers ≤ n coprime to n — used in RSA key generation", 0.4, &["number_theory"]),
+
+            // Set theory
+            TrainingExample::new("math_deeper", "What is a set?",
+                "collection of distinct objects with no inherent order", 0.1, &["set_theory"]),
+            TrainingExample::new("math_deeper", "What is Cantor's theorem?",
+                "|P(S)| > |S| — the power set is always strictly larger than the set", 0.5, &["set_theory"]),
+            TrainingExample::new("math_deeper", "What is the continuum hypothesis?",
+                "there is no set whose cardinality is strictly between |N| and |R| — independent of ZFC", 0.7, &["set_theory"]),
+
+            // Topology
+            TrainingExample::new("math_deeper", "What is a homeomorphism?",
+                "continuous bijection with continuous inverse — topological equivalence", 0.55, &["topology"]),
+            TrainingExample::new("math_deeper", "What is a topological space?",
+                "set with a topology (collection of open sets satisfying union/intersection axioms)", 0.5, &["topology"]),
+            TrainingExample::new("math_deeper", "What is compactness?",
+                "every open cover has a finite subcover — generalization of 'closed and bounded'", 0.6, &["topology"]),
+
+            // Abstract algebra
+            TrainingExample::new("math_deeper", "What is a group?",
+                "set with binary operation that is closed, associative, has identity and inverses", 0.4, &["algebra"]),
+            TrainingExample::new("math_deeper", "What is a ring?",
+                "set with two operations (+, *) forming abelian group under + and monoid under *, with distributivity", 0.5, &["algebra"]),
+            TrainingExample::new("math_deeper", "What is a field?",
+                "ring where every non-zero element has a multiplicative inverse — like Q, R, C, or Fp", 0.5, &["algebra"]),
+
+            // Logic and proof
+            TrainingExample::new("math_deeper", "What is proof by contradiction?",
+                "assume the negation of what you want to prove, derive a contradiction, conclude the original", 0.3, &["logic"]),
+            TrainingExample::new("math_deeper", "What is proof by induction?",
+                "prove base case, then show P(n) implies P(n+1) — establishes P(n) for all natural n", 0.3, &["logic"]),
+            TrainingExample::new("math_deeper", "What is Gödel's incompleteness theorem?",
+                "any consistent formal system containing arithmetic has true statements that cannot be proven within it", 0.7, &["logic"]),
+        ]
+    }
+
+    // ================================================================
     // CALCULUS PROOFS — Both Power Rule & First Principles
     // ================================================================
     pub fn calculus_proof_examples() -> Vec<TrainingExample> {
@@ -1017,6 +1163,9 @@ impl TrainingDataGenerator {
         all.extend(Self::defensive_ai_examples());
         all.extend(Self::anti_surveillance_examples());
         all.extend(Self::calculus_proof_examples());
+        all.extend(Self::ai_ml_advanced_examples());
+        all.extend(Self::chemistry_advanced_examples());
+        all.extend(Self::math_deeper_examples());
         all
     }
 
