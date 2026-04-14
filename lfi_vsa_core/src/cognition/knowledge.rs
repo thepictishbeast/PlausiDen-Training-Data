@@ -1211,6 +1211,99 @@ mod tests {
         Ok(())
     }
 
+    // ============================================================
+    // Stress / invariant tests for KnowledgeEngine
+    // ============================================================
+
+    /// INVARIANT: concept_count is monotonically non-decreasing under learn().
+    #[test]
+    fn invariant_concept_count_only_grows_under_learn() -> Result<(), HdcError> {
+        let mut engine = KnowledgeEngine::new();
+        let initial = engine.concept_count();
+        for i in 0..100 {
+            engine.learn(&format!("kn_inv_{}", i), &[], true)?;
+            assert!(engine.concept_count() >= initial,
+                "concept count went backwards at iter {}", i);
+        }
+        // Re-learning the same concept should NOT increase the count.
+        let after = engine.concept_count();
+        for i in 0..100 {
+            engine.learn(&format!("kn_inv_{}", i), &[], true)?;
+        }
+        assert_eq!(engine.concept_count(), after,
+            "re-learning existing concepts must not duplicate them");
+        Ok(())
+    }
+
+    /// INVARIANT: mastery values stay in [0.0, 1.0] across arbitrary
+    /// review sequences.
+    #[test]
+    fn invariant_mastery_in_unit_interval() -> Result<(), HdcError> {
+        let mut engine = KnowledgeEngine::new();
+        engine.learn("mastery_test", &[], true)?;
+        for i in 0..200 {
+            engine.review("mastery_test", (i % 6) as u8);
+            let m = engine.mastery_of("mastery_test");
+            assert!(m >= 0.0 && m <= 1.0,
+                "mastery escaped [0,1] at iter {}: {}", i, m);
+        }
+        Ok(())
+    }
+
+    /// INVARIANT: untrusted teaching is silently ignored — concept count
+    /// and the unknown concept's mastery both stay at their pre-call value.
+    #[test]
+    fn invariant_untrusted_learn_is_noop() -> Result<(), HdcError> {
+        let mut engine = KnowledgeEngine::new();
+        let before = engine.concept_count();
+        for i in 0..50 {
+            // is_sovereign = false → must be rejected silently.
+            engine.learn(&format!("evil_{}", i), &["a", "b"], false)?;
+        }
+        assert_eq!(engine.concept_count(), before,
+            "untrusted teaching must not register concepts");
+        Ok(())
+    }
+
+    /// INVARIANT: After learning N new concepts, all N must appear in
+    /// concepts() AND in export_graph_json's nodes array.
+    #[test]
+    fn invariant_learned_concepts_survive_to_export() -> Result<(), HdcError> {
+        let mut engine = KnowledgeEngine::new();
+        let names: Vec<String> = (0..30).map(|i| format!("survival_{}", i)).collect();
+        for n in &names {
+            engine.learn(n, &[], true)?;
+        }
+        let json = engine.export_graph_json();
+        for n in &names {
+            assert!(json.contains(n),
+                "concept '{}' must appear in JSON export", n);
+        }
+        // Concepts list must contain them all.
+        let concept_names: std::collections::HashSet<&str> =
+            engine.concepts().iter().map(|c| c.name.as_str()).collect();
+        for n in &names {
+            assert!(concept_names.contains(n.as_str()),
+                "concept '{}' missing from concepts() list", n);
+        }
+        Ok(())
+    }
+
+    /// INVARIANT: concepts_due_for_review returns at most `limit` items.
+    #[test]
+    fn invariant_due_review_respects_limit() -> Result<(), HdcError> {
+        let mut engine = KnowledgeEngine::new();
+        for i in 0..200 {
+            engine.learn(&format!("due_inv_{}", i), &[], true)?;
+        }
+        for limit in [0, 1, 5, 50, 100] {
+            let due = engine.concepts_due_for_review(limit);
+            assert!(due.len() <= limit,
+                "due list ({}) exceeded limit ({})", due.len(), limit);
+        }
+        Ok(())
+    }
+
     #[test]
     fn test_knowledge_engine_initialization() -> Result<(), HdcError> {
         let engine = KnowledgeEngine::new();
