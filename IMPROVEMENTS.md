@@ -302,8 +302,12 @@ Deliberately tricky, misleading, and edge-case questions across all 38 domains. 
 
 ### Planned — High Priority
 
-#### Self-Play Provenance Integration
-Wire traces into MCTS thesis-antithesis-synthesis self-play episodes. Each synthesis records a full trace chain. Traces persist across episodes for strategy evolution analysis.
+#### Self-Play Provenance Integration — ✅ DONE (2026-04-14)
+- [x] MCTS `enable_provenance()` called at start of every generation; arena captures the thesis path
+- [x] Arena passed to `PslSupervisor::audit_with_provenance()` so the antithesis step links to MCTS traces
+- [x] On synthesis, record a `SelfPlayEpisode { generation }` trace entry with the synthesis conclusion ID
+- [x] Each synthesis arena is saved to `~/.lfi/provenance/self_play_gen_<N>.json` (override with `LFI_PROVENANCE_DIR` env var)
+- [x] Rejected generations discard the arena — only traced derivations that reached synthesis persist
 
 #### Knowledge Graph Export — ✅ DONE (2026-04-14)
 - [x] `KnowledgeEngine::export_graph_dot()` — Graphviz DOT format with nodes colored by mastery (green ≥0.7, yellow ≥0.4, red otherwise). Edges only emitted to concepts that exist as nodes (no orphan arrows).
