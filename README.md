@@ -168,6 +168,7 @@ The axum-based server exposes a REST + WebSocket API. All JSON. Handlers are in
 | Route | Method | Auth | Purpose |
 |---|---|---|---|
 | `/api/health` | GET | no | Subsystem readiness snapshot |
+| `/api/metrics` | GET | no | Prometheus text-format counters |
 | `/api/status` | GET | no | Substrate status + telemetry |
 | `/api/facts` | GET | no | Persistent knowledge facts |
 | `/api/qos` | GET | no | PSL axiom pass-rate probe |
