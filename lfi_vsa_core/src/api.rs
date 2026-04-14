@@ -79,6 +79,14 @@ pub struct LearnRequest {
     pub related: Vec<String>,
 }
 
+/// POST /api/audit body — runs PSL governance over a hypervector seed.
+#[derive(Deserialize)]
+pub struct AuditRequest {
+    /// String seed used to deterministically generate the bipolar vector
+    /// being audited. Caller hashes their data into this seed.
+    pub seed: String,
+}
+
 // ============================================================
 // WebSocket: Telemetry Stream
 // ============================================================
@@ -380,6 +388,56 @@ async fn metrics_handler(
 ) -> impl IntoResponse {
     let body = state.metrics.render_prometheus();
     ([("content-type", "text/plain; version=0.0.4")], body)
+}
+
+// ============================================================
+// REST: PSL Audit
+// ============================================================
+
+/// POST /api/audit — run PSL governance over a vector derived from a string seed.
+///
+/// SECURITY: caps `seed` at 16 KiB. The vector is deterministically generated
+/// from the seed, so callers can re-audit the same seed without storing the
+/// hypervector themselves.
+async fn audit_handler(
+    State(state): State<Arc<AppState>>,
+    Json(req): Json<AuditRequest>,
+) -> impl IntoResponse {
+    if req.seed.len() > 16 * 1024 {
+        return Json(json!({
+            "status": "rejected",
+            "reason": "seed exceeds 16 KiB"
+        }));
+    }
+    if req.seed.is_empty() {
+        return Json(json!({
+            "status": "rejected",
+            "reason": "seed is empty"
+        }));
+    }
+
+    debug!("// AUDIT: /api/audit seed_len={}", req.seed.len());
+    let agent = state.agent.lock();
+
+    // Deterministic hash → seed → BipolarVector.
+    let hash = crate::identity::IdentityProver::hash(&req.seed);
+    let vec = crate::hdc::vector::BipolarVector::from_seed(hash);
+    let target = crate::psl::axiom::AuditTarget::Vector(vec);
+
+    match agent.supervisor.audit(&target) {
+        Ok(verdict) => Json(json!({
+            "status": "ok",
+            "axiom_id": verdict.axiom_id,
+            "level": format!("{:?}", verdict.level),
+            "confidence": verdict.confidence,
+            "detail": verdict.detail,
+            "permits_execution": verdict.level.permits_execution(),
+        })),
+        Err(e) => Json(json!({
+            "status": "error",
+            "reason": format!("audit failed: {}", e),
+        })),
+    }
 }
 
 // ============================================================
@@ -774,6 +832,7 @@ pub fn create_router() -> Result<Router, Box<dyn std::error::Error>> {
         .route("/api/health", get(health_handler))
         .route("/api/metrics", get(metrics_handler))
         .route("/api/think", post(think_handler))
+        .route("/api/audit", post(audit_handler))
         .route("/api/knowledge/review", post(knowledge_review_handler))
         .route("/api/knowledge/due", get(knowledge_due_handler))
         .route("/api/knowledge/concepts", get(knowledge_concepts_handler))

@@ -210,6 +210,57 @@ async fn test_metrics_endpoint_returns_200_and_text_plain() {
     let _text = std::str::from_utf8(&bytes).expect("utf8");
 }
 
+/// POST /api/audit returns a verdict for any non-empty seed.
+#[tokio::test]
+async fn test_audit_endpoint_returns_verdict() {
+    let app = lfi_vsa_core::api::create_router().expect("router");
+    let body = serde_json::json!({ "seed": "audit me" }).to_string();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/audit")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap(),
+        )
+        .await
+        .expect("request");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let json: Value = serde_json::from_slice(&bytes).expect("valid JSON");
+    assert_eq!(json["status"], "ok");
+    assert!(json.get("axiom_id").is_some(), "must have axiom_id");
+    assert!(json.get("confidence").is_some(), "must have confidence");
+    assert!(json.get("permits_execution").is_some(), "must have permits_execution");
+}
+
+/// POST /api/audit rejects empty seeds.
+#[tokio::test]
+async fn test_audit_endpoint_rejects_empty_seed() {
+    let app = lfi_vsa_core::api::create_router().expect("router");
+    let body = serde_json::json!({ "seed": "" }).to_string();
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/audit")
+                .header("content-type", "application/json")
+                .body(Body::from(body))
+                .unwrap(),
+        )
+        .await
+        .expect("request");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let json: Value = serde_json::from_slice(&bytes).expect("valid JSON");
+    assert_eq!(json["status"], "rejected");
+}
+
 /// POST /api/knowledge/learn requires authentication.
 #[tokio::test]
 async fn test_knowledge_learn_requires_auth() {
