@@ -149,14 +149,54 @@ Think of LFI as a team of specialists working together:
 | Math Engine | Calculator with proofs | Shows work, verifies each step |
 | Code Evaluator | Code reviewer | Compiles and tests code it writes |
 | Cross-Domain | Connection-maker | Applies lessons from one topic to another |
+| Reasoning Provenance | Honest-explanation guard | Distinguishes "I traced this" from "I'm guessing why" |
+| Spaced Repetition | Review scheduler | Decides which concepts to rehearse next, SM-2 style |
 | Daemon | Scheduler | Runs everything on a loop forever |
+
+### How Reasoning Provenance Works (in plain English)
+
+When LFI answers a question, it remembers the exact reasoning steps it took
+— what rules it applied, what evidence it weighed, how confident it was at
+each step. This is the **derivation trace**.
+
+If you later ask "how did you get that answer?", LFI looks up the trace.
+There are two possible outcomes:
+
+- **Traced** — the trace exists, so LFI walks you through the actual steps.
+- **Reconstructed** — the trace was never recorded (or has been cleared),
+  so LFI **explicitly tells you** "I'm reconstructing this after the fact;
+  it may not match my real reasoning."
+
+This is the whole point: LFI literally cannot lie about whether its
+explanation is real or made up. It's enforced at the data-structure level.
+
+You can interact with the provenance system from the HTTP API:
+
+```bash
+# Ask LFI a question; record the reasoning
+curl -X POST http://localhost:8080/api/think \
+  -H 'content-type: application/json' \
+  -d '{"input": "what is sovereignty"}'
+# → { "answer": "...", "confidence": 0.87, "conclusion_id": 12345678 }
+
+# Ask LFI to explain its reasoning
+curl http://localhost:8080/api/provenance/12345678
+# → { "kind": { "kind": "TracedDerivation" },
+#     "explanation": "Step 0 [System1FastPath conf=0.87] ...",
+#     "confidence_chain": [0.87], "depth": 0 }
+
+# Snapshot the whole reasoning history (after authentication)
+curl http://localhost:8080/api/provenance/export
+# → { "trace_count": 42, "arena": { ... }}
+```
 
 ## 6. What LFI Won't Do
 
 - **Promise 100% certainty about anything.** Even "2+2=4" gets 99.99% confidence at most. This is by design.
 - **Call home.** LFI has no network telemetry. Nothing leaves your machine unless you explicitly tell it to.
-- **Pretend to remember things it didn't actually reason through.** Ask LFI "why" and it will tell you whether it has a real derivation or just a guess.
+- **Pretend to remember things it didn't actually reason through.** Ask LFI "why" and it will tell you whether it has a real derivation or just a guess. (See the Reasoning Provenance section above — this is enforced structurally, not as policy.)
 - **Trust any single source.** Information from one source gets low confidence until corroborated.
+- **Run admin commands without authentication.** Endpoints like `/api/provenance/export`, `/api/provenance/reset`, and `/api/provenance/compact` reject unauthenticated requests, so an attacker who can reach the API still can't dump or wipe your reasoning history.
 
 ## 7. Keeping LFI Running (Maintenance)
 
