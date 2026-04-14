@@ -27,6 +27,7 @@ pub mod answer_verifier;
 pub mod phd_tests;
 pub mod textbook_learning;
 pub mod anti_memorization;
+pub mod info_retrieval;
 
 pub use osint::{OsintAnalyzer, OsintSignal};
 pub use web_audit::ConnectivityAxiom;
