@@ -353,6 +353,43 @@ async fn qos_handler() -> impl IntoResponse {
 }
 
 // ============================================================
+// REST: Health Check
+// ============================================================
+
+/// GET /api/health — quick subsystem health summary for monitors / load balancers.
+///
+/// Returns a flat JSON object with boolean flags for each subsystem.
+/// Status code is always 200 so a monitor can parse the payload rather
+/// than relying solely on HTTP status; a hard "down" surface is signalled
+/// by `ok: false`.
+async fn health_handler(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let agent = state.agent.lock();
+    let provenance_engine_ready = agent.provenance.try_lock().is_some();
+    let axiom_count = agent.supervisor.axiom_count();
+    let concept_count = agent.reasoner.knowledge.concept_count();
+
+    // Release agent lock before running checks that would reacquire it.
+    let current_tier = format!("{:?}", agent.current_tier);
+    let authenticated = agent.authenticated;
+    drop(agent);
+
+    let ok = provenance_engine_ready && axiom_count > 0 && concept_count > 0;
+
+    Json(json!({
+        "ok": ok,
+        "subsystems": {
+            "provenance_engine": provenance_engine_ready,
+            "psl_axioms_registered": axiom_count,
+            "knowledge_concepts": concept_count,
+            "authenticated": authenticated,
+            "current_tier": current_tier,
+        }
+    }))
+}
+
+// ============================================================
 // REST: Think with Provenance
 // ============================================================
 
@@ -548,6 +585,7 @@ pub fn create_router() -> Result<Router, Box<dyn std::error::Error>> {
         .route("/api/search", post(search_handler))
         .route("/api/tier", post(tier_handler))
         .route("/api/qos", get(qos_handler))
+        .route("/api/health", get(health_handler))
         .route("/api/think", post(think_handler))
         .route("/api/provenance/stats", get(provenance_stats_handler))
         .route("/api/provenance/export", get(provenance_export_handler))

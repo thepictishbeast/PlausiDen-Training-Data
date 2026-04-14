@@ -80,17 +80,19 @@ LFI is a general-purpose AI framework that combines **Hyperdimensional Computing
 
 ## Test Coverage
 
-**759 tests, 0 failures** across 80+ modules.
+**1058 lib tests + 13 integration tests, 0 failures** across 80+ modules.
 
 | Layer | Tests |
 |---|---|
 | HDC Core (vector, holographic, compute, liquid) | 80+ |
 | PSL Governance (10 axioms, supervisor, coercion) | 45+ |
-| Cognition (reasoner, MCTS, planner, knowledge) | 75+ |
+| Cognition (reasoner, MCTS, planner, knowledge, spaced-repetition) | 95+ |
 | Intelligence (training, code eval, self-improve, verifier, textbook, phd) | 180+ |
 | HDLM (AST, codebook, intercept, renderers) | 35+ |
 | Crypto Epistemology (commitments, provenance) | 15+ |
-| Integration tests (adversarial, stress, pipeline) | 50+ |
+| Reasoning Provenance (arena, serde, introspection) | 19 |
+| Adversarial training corpus | 60+ |
+| Integration tests (adversarial, stress, pipeline, agent→provenance) | 13 |
 
 Run the suite yourself:
 
@@ -158,6 +160,44 @@ See [OWNERS_GUIDE.md](OWNERS_GUIDE.md) for the full walkthrough in plain English
 
 ---
 
+## HTTP API
+
+The axum-based server exposes a REST + WebSocket API. All JSON. Handlers are in
+`lfi_vsa_core/src/api.rs`.
+
+| Route | Method | Auth | Purpose |
+|---|---|---|---|
+| `/api/health` | GET | no | Subsystem readiness snapshot |
+| `/api/status` | GET | no | Substrate status + telemetry |
+| `/api/facts` | GET | no | Persistent knowledge facts |
+| `/api/qos` | GET | no | PSL axiom pass-rate probe |
+| `/api/auth` | POST | — | Sovereign key verification |
+| `/api/tier` | POST | yes | Manual tier switch (Pulse / Bridge / BigBrain) |
+| `/api/search` | POST | no | Web search with cross-reference |
+| `/api/think` | POST | no | Think **with provenance**, returns `conclusion_id` |
+| `/api/provenance/stats` | GET | no | Trace counter + traced/reconstructed note |
+| `/api/provenance/:id` | GET | no | Explanation tagged Traced vs Reconstructed |
+| `/api/provenance/:id/chain` | GET | no | Full `Vec<TraceEntry>` for a conclusion |
+| `/api/provenance/export` | GET | **yes** | Whole arena as JSON (audit download) |
+| `/api/provenance/reset` | POST | **yes** | Wipe the arena (destructive) |
+| `/ws/telemetry` | WS | no | Real-time substrate telemetry stream |
+| `/ws/chat` | WS | no | Chat with provenance; each response includes `conclusion_id` |
+
+The full provenance loop:
+
+```
+POST /api/think  {"input": "what is sovereignty"}
+  → { "answer": "…", "confidence": 0.87, "conclusion_id": 12345678 }
+
+GET /api/provenance/12345678
+  → { "kind": { "kind": "TracedDerivation" },
+      "explanation": "[Step 0 | System1FastPath … ] …",
+      "confidence_chain": [0.87],
+      "depth": 0 }
+```
+
+---
+
 ## Documentation
 
 - [OWNERS_GUIDE.md](OWNERS_GUIDE.md) — plain-English setup and usage walkthrough
@@ -194,5 +234,5 @@ Contact the maintainer for licensing discussions.
 
 ---
 
-**Status:** Active development. Training pipeline LIVE. 759 tests passing.
+**Status:** Active development. Training pipeline LIVE. 1058 lib + 13 integration tests passing.
 **Last updated:** 2026-04-14
