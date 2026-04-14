@@ -48,7 +48,7 @@ fn test_cognitive_core_with_provenance() {
     let mut provenance = ProvenanceEngine::new();
 
     // Think about a novel problem.
-    let (result, trace_id) = core.think_with_provenance(
+    let (result, _trace_id) = core.think_with_provenance(
         "design a zero-knowledge proof system for voter verification",
         &mut provenance.arena,
         None,
@@ -214,7 +214,7 @@ fn test_self_play_with_provenance() {
     );
 
     // SYNTHESIS: If both agree, forge the hardened strategy.
-    let synthesis_trace = provenance.arena.record_step(
+    let _synthesis_trace = provenance.arena.record_step(
         Some(antithesis_trace),
         InferenceSource::SelfPlayEpisode { generation: 1 },
         vec!["thesis".into(), "antithesis".into()],
@@ -235,7 +235,7 @@ fn test_self_play_with_provenance() {
 /// Knowledge engine + CognitiveCore + PSL end-to-end.
 #[test]
 fn test_knowledge_driven_reasoning() {
-    use lfi_vsa_core::cognition::knowledge::KnowledgeEngine;
+    
 
     let mut core = CognitiveCore::new().expect("init");
 

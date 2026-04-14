@@ -32,10 +32,6 @@ use lfi_vsa_core::intelligence::supply_chain::{
     SupplyChainAnalyzer, Package, Ecosystem, Severity as PkgSeverity,
 };
 use lfi_vsa_core::intelligence::answer_verifier::AnswerVerifier;
-use lfi_vsa_core::intelligence::model_extraction::{
-    ModelExtractionDetector, QueryRecord, ExtractionSeverity,
-};
-use lfi_vsa_core::intelligence::data_poisoning::{DataPoisoningAnalyzer, TrainingSample};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const REPO: &str = "https://github.com/thepictishbeast/PlausiDen-AI";
@@ -78,6 +74,7 @@ impl Style {
     fn blue(&self, s: &str) -> String {
         if self.color { format!("\x1b[34m{}\x1b[0m", s) } else { s.into() }
     }
+    #[allow(dead_code)]
     fn magenta(&self, s: &str) -> String {
         if self.color { format!("\x1b[35m{}\x1b[0m", s) } else { s.into() }
     }
@@ -152,6 +149,8 @@ struct Args {
     no_color: bool,
     force_color: bool,
     verbose: bool,
+    /// Reserved for `--quiet` flag. Currently parsed but not consumed.
+    #[allow(dead_code)]
     quiet: bool,
 }
 

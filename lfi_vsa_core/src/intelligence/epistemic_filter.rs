@@ -532,7 +532,7 @@ mod tests {
         let initial_tier = r1.tier.clone();
 
         // Second source corroborates — should promote.
-        let r2 = filter.ingest_claim("TLS 1.3 is secure", "expert_b");
+        let _r2 = filter.ingest_claim("TLS 1.3 is secure", "expert_b");
         let r3 = filter.ingest_claim("TLS 1.3 is secure", "standards_body");
 
         assert_eq!(r3.supporting_sources.len(), 3);

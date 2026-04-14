@@ -473,7 +473,7 @@ mod tests {
     #[test]
     fn test_never_sees_expected_answer() {
         let mut learner = TextbookLearner::new();
-        let mut knowledge = KnowledgeEngine::new();
+        let _knowledge = KnowledgeEngine::new();
 
         let q = TextbookQuestion::new(
             "What is the secret?",

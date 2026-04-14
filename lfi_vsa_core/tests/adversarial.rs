@@ -2,7 +2,6 @@
 //!
 //! These tests verify that security mechanisms hold under adversarial conditions.
 
-use lfi_vsa_core::memory_bus::{HyperMemory, DIM_PROLETARIAT};
 use lfi_vsa_core::hdc::vector::BipolarVector;
 use lfi_vsa_core::psl::supervisor::PslSupervisor;
 use lfi_vsa_core::psl::axiom::*;

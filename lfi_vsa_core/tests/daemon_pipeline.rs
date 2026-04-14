@@ -133,10 +133,11 @@ fn test_inference_training_with_mock() -> Result<(), HdcError> {
     assert_eq!(result.total_questions, 5);
     assert!(result.cache_hit_rate >= 0.0);
 
-    // Error history should be populated for wrong answers.
+    // Error history should be populated for wrong answers. The result
+    // type guarantees this is non-negative; we just need the call to
+    // actually return something (compiles + runs without panic).
     let weak = trainer.weakest_domains(3);
-    // Some will be wrong since mock answers don't match most math questions.
-    assert!(weak.len() >= 0); // At least compiles and runs
+    let _ = weak.len();
 
     Ok(())
 }

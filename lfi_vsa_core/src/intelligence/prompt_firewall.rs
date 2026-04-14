@@ -719,7 +719,7 @@ mod tests {
 
     #[test]
     fn test_harmful_content_csam_blocked() {
-        let fw = PromptFirewall::new();
+        let _fw = PromptFirewall::new();
         // CSAM patterns are immediately blocked — we test the DETECTOR,
         // not real content. The detector needs the phrase to fire.
         let categories = PromptFirewall::detect_harmful_content(

@@ -1,12 +1,11 @@
 //! Deployment readiness tests — verify LFI works on target hardware profiles.
 
 use lfi_vsa_core::memory_bus::{HyperMemory, DIM_PROLETARIAT};
-use lfi_vsa_core::hdc::vector::BipolarVector;
 use lfi_vsa_core::hdc::compute::{DeploymentProfile, ResourceEstimator};
 use lfi_vsa_core::psl::supervisor::PslSupervisor;
 use lfi_vsa_core::psl::axiom::*;
 use lfi_vsa_core::cognition::mcts::MctsEngine;
-use lfi_vsa_core::cognition::router::{SemanticRouter, RouterConfig, IntelligenceTier};
+use lfi_vsa_core::cognition::router::{SemanticRouter, IntelligenceTier};
 
 #[test]
 fn test_laptop_deployment_mcts() {
@@ -83,7 +82,7 @@ fn test_memory_fits_all_profiles() {
 
 #[test]
 fn test_full_stack_on_phone_profile() {
-    let profile = DeploymentProfile::pixel_phone();
+    let _profile = DeploymentProfile::pixel_phone();
 
     // Build the full security stack within phone constraints.
     let mut supervisor = PslSupervisor::new();

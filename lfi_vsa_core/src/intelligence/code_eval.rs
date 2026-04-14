@@ -716,7 +716,7 @@ mod tests {
     fn test_difficulty_progression() {
         let beginner = ChallengeLibrary::beginner();
         let intermediate = ChallengeLibrary::intermediate();
-        let security = ChallengeLibrary::security();
+        let _security = ChallengeLibrary::security();
 
         let avg_beginner: f64 = beginner.iter().map(|c| c.difficulty).sum::<f64>() / beginner.len() as f64;
         let avg_intermediate: f64 = intermediate.iter().map(|c| c.difficulty).sum::<f64>() / intermediate.len() as f64;
