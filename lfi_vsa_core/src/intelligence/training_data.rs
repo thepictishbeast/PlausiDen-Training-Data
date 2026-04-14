@@ -91,7 +91,7 @@ impl TrainingDataGenerator {
             TrainingExample::new("math", "log10(1000)", "3", 0.2, &["logarithms"]),
             TrainingExample::new("math", "ln(e)", "1", 0.15, &["logarithms"]),
             // Series/Sequences
-            TrainingExample::new("math", "sum of 1+2+3+...+100", "5050 (Gauss formula: n(n+1)/2)", 0.35, &["series"]),
+            TrainingExample::new("math", "sum of 1+2+3+...+100", "5050", 0.35, &["series"]),
             TrainingExample::new("math", "geometric series: 1+1/2+1/4+1/8+...", "2 (converges to a/(1-r) = 1/(1-0.5))", 0.4, &["series"]),
         ]
     }
@@ -127,7 +127,7 @@ impl TrainingDataGenerator {
             TrainingExample::new("biology", "What are the four DNA bases?", "adenine, thymine, guanine, cytosine (A, T, G, C)", 0.15, &["genetics"]),
             TrainingExample::new("biology", "What is ATP?", "adenosine triphosphate — cellular energy currency", 0.25, &["biochemistry"]),
             TrainingExample::new("biology", "What is CRISPR?", "gene editing technology using Cas9 enzyme", 0.35, &["genetics", "biotech"]),
-            TrainingExample::new("biology", "How many chromosomes do humans have?", "46 (23 pairs)", 0.1, &["genetics"]),
+            TrainingExample::new("biology", "How many chromosomes do humans have?", "46", 0.1, &["genetics"]),
             TrainingExample::new("biology", "What is evolution by natural selection?", "organisms with advantageous traits survive and reproduce more — gradual change over generations", 0.2, &["evolution"]),
             TrainingExample::new("biology", "What is an enzyme?", "biological catalyst that speeds up chemical reactions without being consumed", 0.2, &["biochemistry"]),
         ]
@@ -139,7 +139,7 @@ impl TrainingDataGenerator {
     pub fn chemistry_examples() -> Vec<TrainingExample> {
         vec![
             TrainingExample::new("chemistry", "What is H2O?", "water", 0.05, &["compounds"]),
-            TrainingExample::new("chemistry", "What is the pH of pure water?", "7 (neutral)", 0.1, &["acids_bases"]),
+            TrainingExample::new("chemistry", "What is the pH of pure water?", "7", 0.1, &["acids_bases"]),
             TrainingExample::new("chemistry", "What is Avogadro's number?", "6.022 x 10^23", 0.2, &["constants"]),
             TrainingExample::new("chemistry", "What is an isotope?", "atoms with same protons but different neutrons", 0.25, &["atomic"]),
             TrainingExample::new("chemistry", "Balance: Fe + O2 -> Fe2O3", "4Fe + 3O2 -> 2Fe2O3", 0.4, &["reactions"]),
