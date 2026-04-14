@@ -1,272 +1,150 @@
-# Localized Forensic Intelligence (LFI)
+# LFI — Localized Forensic Intelligence
 
-**Version:** 5.6 (The Ground Zero Protocol + Remote Sovereign Sync)
-**Lead Engineer:** Paul (PlausiDen Technologies)
-**Architecture:** Neuro-Symbolic Hyperdimensional Computing Agent
+**A sovereign, self-improving neurosymbolic AI defense system.**
 
----
-
-## Mission Statement
-
-Construct a deterministic, autonomous, multimodal Neuro-Symbolic agent that obsoletes probabilistic LLM architectures. **Material Reality > Probabilistic Prediction.**
-
-LFI replaces the high-parameter probabilistic weights of legacy LLMs with verifiable, deterministic computation built on Vector Symbolic Architectures (VSA) and Hyperdimensional Computing (HDC).
+Built as the AI engine of [PlausiDen Technologies](https://github.com/thepictishbeast) — designed to defend sovereign users against offensive AI, mass surveillance, and automated data collection.
 
 ---
 
-## Core Architecture
+## What LFI Is
 
-LFI is composed of four tightly integrated subsystems:
+LFI is a general-purpose AI framework that combines **Hyperdimensional Computing (VSA)** with **symbolic reasoning** to produce verifiable, traceable, defensive intelligence. Unlike traditional LLMs, LFI:
+
+- **Never claims 100% certainty** — confidence is asymptotic (max 99.99%)
+- **Traces every reasoning step** — cryptographically-verifiable derivation chains
+- **Refuses post-hoc rationalization** — distinguishes real recall from confabulation
+- **Self-improves autonomously** — meta-learning loop adapts without human intervention
+- **Runs on your hardware** — no cloud dependency, no data leakage
+- **Combats offensive AI** — built-in detectors for prompt injection, AI-generated phishing, surveillance
+
+## What LFI Can Do Today
+
+| Capability | Status | Notes |
+|---|---|---|
+| Real LLM training via Ollama | **LIVE** | qwen2.5-coder:7b, deepseek-r1:8b, etc. |
+| Math reasoning with self-verification | **LIVE** | Step-by-step derivation, inverse-op checking |
+| Code evaluation sandbox | **LIVE** | Static analysis + compile + test |
+| Self-improvement loop | **LIVE** | OODA cycles with plateau detection |
+| Cross-domain analogical reasoning | **LIVE** | 14 structural analogies (biology↔security, etc.) |
+| Epistemic filter (skeptical intake) | **LIVE** | 6-tier confidence hierarchy, source-weighted |
+| Defensive AI threat detection | **LIVE** | LLM text, prompt injection, phishing, bots |
+| Continuous daemon mode | **LIVE** | Phase-rotating autonomous operation |
+| Training data: 457 examples × 49 domains | **LIVE** | Security, math, code, defense, surveillance |
+
+## Architecture
 
 ```
-+-------------------------------------------------------------------+
-|                        LFI VSA CORE                               |
-|                                                                   |
-|  +-------------------+    +-------------------+                   |
-|  |   HDC Core        |    |   PSL Supervisor  |                   |
-|  |   (Logic/Compute) |<-->|   (The Auditor)   |                   |
-|  |                   |    |                   |                   |
-|  | BipolarVector     |    | Axiom trait       |                   |
-|  | 10,000-dim {-1,+1}|    | TrustLevel (CARTA)|                   |
-|  | Bind (XOR)        |    | AuditTarget       |                   |
-|  | Bundle (Sum+Clip) |    | PslSupervisor     |                   |
-|  | Permute (Shift)   |    | AxiomVerdict      |                   |
-|  | ComputeBackend    |    |                   |                   |
-|  +-------------------+    +-------------------+                   |
-|           |                        |                              |
-|           v                        v                              |
-|  +---------------------------------------------------+            |
-|  |              HDLM (Language/Generation)            |           |
-|  |                                                    |           |
-|  |  Tier 1 (Forensic):  Token -> AST (verified)       |           |
-|  |  Tier 2 (Decorative): AST -> Code/Prose (render)   |           |
-|  |                                                    |           |
-|  |  AST arena with optional HV fingerprints           |           |
-|  |  InfixRenderer | SExprRenderer                     |           |
-|  +---------------------------------------------------+            |
-+-------------------------------------------------------------------+
-         |                    |                    |
-    LocalBackend         Remote GPU           IPC Bus
-    (ARM SIMD)           (CARTA/ZT)       (lfi_daemon.sh)
+ ┌───────────────────────────────────────────────────────────────┐
+ │                         LFI VSA Core                          │
+ │                                                               │
+ │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐   │
+ │  │  HDC Engine  │──│ PSL Auditor  │──│  Provenance        │   │
+ │  │  (10k-dim    │  │  (10 axioms, │  │  (TracedDerivation │   │
+ │  │   bipolar)   │  │   CARTA)     │  │   vs Reconstructed)│   │
+ │  └──────────────┘  └──────────────┘  └────────────────────┘   │
+ │         │                  │                  │               │
+ │         └─────────┬────────┴──────────────────┘               │
+ │                   │                                           │
+ │  ┌────────────────┴────────────────────────────────────┐      │
+ │  │              Intelligence Layer                     │      │
+ │  │                                                     │      │
+ │  │  • Self-Improvement Engine (OODA meta-learning)     │      │
+ │  │  • Cross-Domain Reasoning (Gentner transfer)        │      │
+ │  │  • Epistemic Filter (asymptotic confidence)         │      │
+ │  │  • Defensive AI (threat detection)                  │      │
+ │  │  • Generalization Tester (rote vs understanding)    │      │
+ │  │  • Math Engine (verified step-by-step)              │      │
+ │  │  • Code Evaluator (sandbox execution)               │      │
+ │  │  • Local Inference (Ollama/Gemini/Claude/HTTP)      │      │
+ │  │  • Daemon Mode (continuous operation)               │      │
+ │  └─────────────────────────────────────────────────────┘      │
+ └───────────────────────────────────────────────────────────────┘
 ```
-
-### I. HDC Core (Logic & Compute)
-
-Employs **10,000-dimensional bipolar hypervectors** (`V in {-1, 1}^10000`). All reasoning relies on three bitwise algebra operations:
-
-| Operation | Implementation | Algebraic Properties |
-|-----------|---------------|---------------------|
-| **Binding** | XOR | Commutative, associative, self-inverse |
-| **Bundling** | Sum + Clip | Commutative, majority-vote superposition |
-| **Permutation** | Cyclic left shift | Invertible, weight-preserving |
-
-Execution defaults to local ARMv9.2-A (SIMD/NEON on Tensor G5 Laguna) but uses a modular `ComputeBackend` trait for remote GPU dispatch.
-
-### II. PSL Supervisor (The Auditor)
-
-A Probabilistic Soft Logic layer acting as a **"Hostile Witness."** Verifies all VSA outputs, external GPU returns, and file ingestions against material axioms (physics, logic, security) to enforce a **Zero-Hallucination** environment.
-
-- **CARTA Trust Model:** Untrusted -> Suspicious -> Provisional -> Verified -> Sovereign
-- **Axiom trait:** Pluggable verification rules (Beta defines logic, Alpha builds infrastructure)
-- **AuditTarget variants:** Vector, RawBytes, Scalar, Payload
-
-### III. HDLM (Language & Generation)
-
-Multi-Level Semantic Mapping with strict tier separation:
-
-- **Tier 1 (Forensic):** Generates mathematically perfect Abstract Syntax Trees (ASTs). The AST IS the truth.
-- **Tier 2 (Decorative):** Expands the AST into aesthetic code or human prose. **Read-only on the AST.** Cannot alter logic.
-
-Each AST node can carry an optional `BipolarVector` fingerprint for bidirectional HDC<->HDLM mapping.
-
-### IV. Unified Hyperdimensional Sensorium (Planned)
-
-FOSS transducers to project audio, video, images, and arbitrary file binaries into the unified 10,000-bit VSA space. Media generation via a local Hybrid Synthesis Engine.
-
----
-
-## Hardware Target
-
-| Component | Specification |
-|-----------|--------------|
-| **Root Hardware** | Google Pixel 10 Pro XL (Tensor G5 "Laguna" SoC) |
-| **Architecture** | ARMv9.2-A, SIMD/NEON |
-| **Elastic Compute** | Remote FOSS GPU Clusters (via CARTA / Assume Breach) |
-| **Operating Environment** | Aarch64 / Debian-based Linux (Proot Layer) |
-
----
-
-## The Four Segregated Workflows
-
-Strict segregation of duties to eliminate cross-contamination:
-
-| Workflow | Role | Agent | Responsibility |
-|----------|------|-------|----------------|
-| **Alpha** | The Architect | Claude Code | Structural engineering, Rust/C++/ASM, Web API, transducers. **Prohibited from inventing logic rules.** |
-| **Beta** | The Auditor | Gemini 3.1 Pro | Verification, security, PSL axiom definition, dialectical skepticism. |
-| **Gamma** | The Chronicler | State Persistence | Manages STATE.md, CLAUDE.md, GEMINI.md, git protocol. |
-| **Delta** | The Watchdog | Telemetry | Strict logging mandates. Assume all code is broken until logs prove success. |
-
-### IPC Protocol
-
-Alpha and Beta communicate via file ledger:
-- `lfi_bus.json` — Alpha writes output payloads here
-- `lfi_audit.json` — Beta writes audit resolutions here
-- `lfi_daemon.sh` — Monitors both files via `inotifywait`, logs to `LFI.log`
-
----
-
-## Security Posture
-
-- **`#![forbid(unsafe_code)]`** at crate root — absolute memory safety
-- **All operations return `Result<T, E>` or `Option<T>`** — no implicit failure
-- **`.unwrap()`, `.expect()`, `.panic!()` are strictly forbidden** — even in non-test code
-- **Zero-Trust / Assume Breach** — all external data enters at `TrustLevel::Untrusted`
-- **CARTA model** — Continuous Adaptive Risk and Trust Assessment on every datum
-
-See [docs/SECURITY.md](docs/SECURITY.md) for the full security posture document.
-
----
-
-## Building & Testing
-
-### Prerequisites
-
-- Rust toolchain (edition 2021+)
-- `inotify-tools` (for `lfi_daemon.sh`)
-
-### Build
-
-```bash
-cd lfi_vsa_core
-cargo build
-```
-
-### Test
-
-```bash
-cd lfi_vsa_core
-cargo test
-```
-
-Current test suite: **89 tests across 3 subsystems, 0 failures.**
-
-| Subsystem | Test Count | Coverage |
-|-----------|-----------|----------|
-| HDC Core | 48 | Algebraic proofs, statistical distribution, cross-operation recovery |
-| PSL Supervisor | 13 | Audit pipeline, trust levels, hostile data, threshold tuning |
-| HDLM | 28 | AST construction/traversal, Tier 1 parsing, Tier 2 rendering, mutation invariant |
-
-See [docs/TESTING.md](docs/TESTING.md) for the full test strategy.
-
----
-
-## Delta Telemetry
-
-**Assume all code is fundamentally broken until the log proves success.**
-
-Every function, every branch, every edge case emits a `[DEBUGLOG]` line:
-
-```
-[DEBUGLOG][src/hdc/vector.rs:42] - new_random: dim=10000
-[DEBUGLOG][src/psl/supervisor.rs:87] - audit: axiom=Axiom:Dimensionality_Constraint, passed=true, tv=1.0000
-```
-
-All telemetry is structurally isolated via the `debuglog!` and `debuglog_val!` macros for seamless production stripping. See [docs/TELEMETRY.md](docs/TELEMETRY.md) for the complete telemetry map.
-
----
-
-## Project Structure
-
-```
-lfi_project/                          # Sovereign root directory
-├── .git/                             # Version control (Atomic Git Protocol)
-├── .github/
-│   └── dependabot.yml                # Dependency update automation
-├── .gitignore                        # Excludes target/ build artifacts
-├── README.md                         # This file
-├── CLAUDE.md                         # Workflow Alpha state document
-├── STATE.md                          # Gamma Handoff state for agent continuity
-├── LFI.log                           # Delta telemetry daemon log
-├── lfi_bus.json                      # IPC: Alpha -> Beta payload ledger
-├── lfi_audit.json                    # IPC: Beta -> Alpha audit resolution
-├── lfi_daemon.sh                     # IPC watchdog daemon (inotifywait)
-├── docs/
-│   ├── ARCHITECTURE.md               # System architecture deep-dive
-│   ├── PROJECT_STRUCTURE.md          # Per-file descriptions
-│   ├── HDC_OPERATIONS.md             # Mathematical foundations
-│   ├── PSL_SUPERVISOR.md             # PSL framework documentation
-│   ├── HDLM_AST.md                  # HDLM multi-level semantic mapping
-│   ├── TELEMETRY.md                  # Debuglog location map
-│   ├── TESTING.md                    # Test strategy and coverage
-│   └── SECURITY.md                   # Security posture and invariants
-└── lfi_vsa_core/                     # Rust library crate
-    ├── Cargo.toml                    # Dependencies: bitvec, rand, serde, serde_json
-    ├── Cargo.lock                    # Pinned dependency versions
-    ├── .gitignore                    # Excludes target/
-    ├── src/
-    │   ├── lib.rs                    # Crate root: #![forbid(unsafe_code)], module wiring
-    │   ├── telemetry.rs              # debuglog! and debuglog_val! macros
-    │   ├── hdc/                      # Phase 1: Hyperdimensional Computing Core
-    │   │   ├── mod.rs                # Module exports
-    │   │   ├── error.rs              # HdcError enum
-    │   │   ├── vector.rs             # BipolarVector + all HDC algebra + 48 tests
-    │   │   └── compute.rs            # ComputeBackend trait + LocalBackend + 4 tests
-    │   ├── psl/                      # Phase 2A: Probabilistic Soft Logic Supervisor
-    │   │   ├── mod.rs                # Module exports
-    │   │   ├── error.rs              # PslError enum
-    │   │   ├── axiom.rs              # Axiom trait + AuditTarget + built-in structural axioms
-    │   │   ├── trust.rs              # TrustLevel (CARTA) + TrustAssessment
-    │   │   └── supervisor.rs         # PslSupervisor engine + 13 tests
-    │   └── hdlm/                     # Phase 2B: Hyperdimensional Language Model
-    │       ├── mod.rs                # Module exports
-    │       ├── error.rs              # HdlmError enum
-    │       ├── ast.rs                # AST arena + NodeKind + DFS/BFS + 11 tests
-    │       ├── tier1_forensic.rs     # ForensicGenerator trait + ArithmeticGenerator + 9 tests
-    │       └── tier2_decorative.rs   # DecorativeExpander trait + renderers + 8 tests
-    └── tests/
-        └── forensic_audit.rs         # Integration test: Hamming weight statistical audit
-
-```
-
-See [docs/PROJECT_STRUCTURE.md](docs/PROJECT_STRUCTURE.md) for detailed per-file descriptions.
-
----
-
-## Git History
-
-| Commit | Phase | Description |
-|--------|-------|-------------|
-| `827ee4e` | Phase 1 | INIT: VSA Core Baseline (HDC algebra, 48 tests) |
-| `15e4678` | Audit | Beta cleared Phase 1 (5 axioms verified) |
-| `d12feb3` | Phase 2 | PSL Supervisor + HDLM AST (89 tests) |
-| `448319a` | Merge | Merged origin/main dependabot config |
-
----
 
 ## Test Coverage
 
-609+ tests (542 lib + 67 integration/adversarial/stress), 0 failures. Every major subsystem has test coverage:
+**704 tests, 0 failures** across 70+ modules.
 
-| Subsystem | Tests | Key Capabilities Verified |
-|-----------|-------|--------------------------|
-| HDC Core (vector, holographic, compute) | 48+ | Binding, bundling, permutation, similarity, algebraic invariants |
-| PSL Governance (supervisor, axioms, feedback) | 40+ | Axiom evaluation, trust hierarchy, coercion detection, injection prevention |
-| Cognition (reasoner, MCTS, planner, knowledge) | 70+ | Dual-mode reasoning, MCTS deliberation, goal decomposition, novelty assessment |
-| Reasoning Provenance | 15 | TracedDerivation vs ReconstructedRationalization enforcement |
-| HDLM (AST, codebook, intercept) | 30+ | Arena allocation, forensic generation, OPSEC PII scrubbing |
-| Crypto Epistemology | 11 | Belief commitments, tamper detection, provenance enforcement |
-| World Model | 8 | Counterfactual reasoning, multi-step prediction, causal learning |
-| Identity & Laws | 23 | ZK-style identity verification, sovereign law enforcement |
-| Infrastructure (memory bus, telemetry, QoS) | 30+ | HyperMemory operations, substrate health, policy compliance |
+| Layer | Tests |
+|---|---|
+| HDC Core (vector, holographic, compute, liquid) | 80+ |
+| PSL Governance (10 axioms, supervisor, coercion) | 45+ |
+| Cognition (reasoner, MCTS, planner, knowledge) | 75+ |
+| Intelligence (training, code eval, self-improve, defensive, generalization) | 120+ |
+| HDLM (AST, codebook, intercept, renderers) | 35+ |
+| Crypto Epistemology (commitments, provenance) | 15+ |
+| Integration tests (adversarial, stress, pipeline) | 50+ |
+
+## Quick Start
+
+Prerequisites: Rust 1.75+, Ollama (optional for real LLM training).
 
 ```bash
-cd lfi_vsa_core
-cargo test
+git clone https://github.com/thepictishbeast/PlausiDen-AI.git
+cd PlausiDen-AI/lfi_vsa_core
+cargo test               # 704 tests should pass
 ```
 
----
+**Run with real LLM training (requires Ollama):**
+
+```bash
+# Install Ollama and pull a lightweight model
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull qwen2.5-coder:7b
+
+# Build and run training
+cd lfi_vsa_core
+cargo run --release --bin ollama_train -- --examples 50
+```
+
+See [OWNERS_GUIDE.md](OWNERS_GUIDE.md) for a plain-English setup and usage walkthrough.
+
+## Core Principles
+
+1. **Material reality > probabilistic prediction.** Every output is verifiable, not guessed.
+2. **Epistemic honesty.** LFI distinguishes traced derivations from post-hoc rationalizations and labels them accordingly.
+3. **Asymptotic confidence.** No claim reaches 100% certainty. Even formal proofs cap at 99.99%.
+4. **Skeptical intake.** Unknown sources get low initial confidence. Corroboration from reputable sources required for promotion.
+5. **Sovereign operation.** Runs entirely on your hardware. No cloud, no telemetry, no data collection.
+6. **Defense in depth.** Multi-layer threat detection. Assume the attacker is AI-powered.
+7. **Self-improvement over static training.** LFI is designed to compound its intelligence autonomously.
+
+## Security Posture
+
+- `#![forbid(unsafe_code)]` at crate root
+- All public APIs return `Result<T, E>` or `Option<T>` — no implicit panics
+- UTF-8 safe string handling throughout (no byte-slicing panics)
+- Memory-leak-free (no `Box::leak()` in production paths)
+- CARTA trust model: Untrusted → Suspicious → Provisional → Verified → Sovereign
+- Every axiom evaluation produces a signed provenance trace
+
+## Subsystem Documentation
+
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — System architecture deep-dive
+- [docs/HDC_OPERATIONS.md](docs/HDC_OPERATIONS.md) — VSA mathematical foundations
+- [docs/PSL_SUPERVISOR.md](docs/PSL_SUPERVISOR.md) — Axiom governance framework
+- [docs/SECURITY.md](docs/SECURITY.md) — Threat model and mitigations
+- [IMPROVEMENTS.md](IMPROVEMENTS.md) — Active development roadmap
+- [OWNERS_GUIDE.md](OWNERS_GUIDE.md) — Plain-English setup and usage
+
+## Hardware Targets
+
+| Device | Status |
+|---|---|
+| Kali Linux / Debian workstation (i7/64GB/GPU) | Primary dev |
+| Pixel 10 Pro XL (Tensor G5 "Laguna") | Planned (NDK build) |
+| Cloud VPS (for always-on training) | Supported |
+
+## Mission
+
+LFI is the core defensive component of [PlausiDen](https://github.com/thepictishbeast), a sovereign technology stack that gives individual users the same defensive capabilities that state actors and corporations already have. Every citizen deserves a sovereign AI defender that answers only to them.
 
 ## License
 
-Proprietary - PlausiDen Technologies. All rights reserved.
+Proprietary — PlausiDen Technologies. All rights reserved.
+Contact the maintainer for licensing discussions.
+
+---
+
+**Current version: Active Development (training pipeline LIVE)**
+**Last updated: 2026-04-14**
