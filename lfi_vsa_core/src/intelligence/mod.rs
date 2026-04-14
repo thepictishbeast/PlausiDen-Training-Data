@@ -31,6 +31,7 @@ pub mod info_retrieval;
 pub mod benchmark_harness;
 pub mod deepfake_detection;
 pub mod supply_chain;
+pub mod secret_scanner;
 
 pub use osint::{OsintAnalyzer, OsintSignal};
 pub use web_audit::ConnectivityAxiom;
