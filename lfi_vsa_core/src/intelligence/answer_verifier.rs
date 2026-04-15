@@ -622,6 +622,32 @@ impl AnswerVerifier {
                     confidence: ratio,
                 };
             }
+
+            // 7b. Verbose-semantic match: when the answer is much longer
+            // than expected (LLM gave a long explanation for a short
+            // canonical answer), accept lower keyword overlap as long
+            // as the answer contains the most distinctive expected term.
+            // Catches the common failure mode where the expected is
+            // "Arc<Mutex<T>>" and the LLM responds with a paragraph
+            // explaining concurrent access patterns ending in Arc/Mutex.
+            let len_ratio = ans_norm.len() as f64 / (exp_norm.len() as f64).max(1.0);
+            if len_ratio >= 3.0 && ratio >= 0.25 {
+                // Find the longest expected word — most distinctive.
+                let distinctive = exp_words.iter().max_by_key(|w| w.len());
+                if let Some(d) = distinctive {
+                    if ans_words.contains(d) || ans_norm.contains(d.as_str()) {
+                        return VerifyResult {
+                            is_correct: true,
+                            normalized_answer: ans_norm,
+                            normalized_expected: exp_norm,
+                            matched_mode: Some(format!(
+                                "VerboseSemantic(overlap={:.0}%, distinctive='{}')",
+                                ratio * 100.0, d)),
+                            confidence: ratio.max(0.6),
+                        };
+                    }
+                }
+            }
         }
 
         VerifyResult {
@@ -929,6 +955,42 @@ mod tests {
         let result = AnswerVerifier::verify("299,792 km/s", "3 x 10^8 m/s");
         assert!(result.is_correct,
             "verify must accept unit-equivalent answers: matched_mode={:?}",
+            result.matched_mode);
+    }
+
+    #[test]
+    fn test_verify_accepts_verbose_correct_answer() {
+        // Real failure from the live training run: model wrote a paragraph
+        // about concurrent access patterns, expected was just "Arc<Mutex<T>>".
+        let answer = "Pattern for handling concurrent access typically involves \
+                      using Arc Mutex T for shared mutable state across threads.";
+        let expected = "Arc<Mutex<T>>";
+        let result = AnswerVerifier::verify(answer, expected);
+        assert!(result.is_correct,
+            "verbose correct answer must be accepted: matched_mode={:?}",
+            result.matched_mode);
+    }
+
+    #[test]
+    fn test_verify_accepts_verbose_supply_chain_attack() {
+        let answer = "A supply chain attack targets the components or services \
+                      used by the target — compromise a dependency or vendor \
+                      to attack downstream consumers.";
+        let expected = "compromise a dependency vendor to attack downstream consumers";
+        let result = AnswerVerifier::verify(answer, expected);
+        assert!(result.is_correct,
+            "verbose semantic match must accept this: matched_mode={:?}",
+            result.matched_mode);
+    }
+
+    #[test]
+    fn test_verify_rejects_truly_wrong_answer() {
+        // Sanity: VerboseSemantic must NOT mark a wrong answer as correct.
+        let answer = "H2O is a machine learning platform that provides distributed computing.";
+        let expected = "water";
+        let result = AnswerVerifier::verify(answer, expected);
+        assert!(!result.is_correct,
+            "wrong answer must be rejected: matched_mode={:?}",
             result.matched_mode);
     }
 }
