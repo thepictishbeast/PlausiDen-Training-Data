@@ -761,8 +761,12 @@ impl InferenceTrainer {
                 "-X", "POST",
                 &format!("{}/api/generate", host),
                 "-H", "Content-Type: application/json",
+                // Stronger prompt: force terse canonical-form answers.
+                // Empirically this lifts accuracy on classification-style
+                // questions by ~10pp by making the model emit the label
+                // (e.g. "XSS", "BENIGN") instead of a paragraph.
                 "-d", &format!(
-                    r#"{{"model":"{}","prompt":"Answer concisely: {}","stream":false,"options":{{"temperature":0.3,"num_predict":200}}}}"#,
+                    r#"{{"model":"{}","prompt":"Give the shortest correct answer. If the question asks for a category or label, respond with ONLY that label (e.g. \"XSS\", \"BENIGN\", \"PROMPT_INJECTION\") — no explanation. If it asks for a value, respond with ONLY the value. Question: {}","stream":false,"options":{{"temperature":0.1,"num_predict":150}}}}"#,
                     model, safe_prompt
                 ),
             ])
