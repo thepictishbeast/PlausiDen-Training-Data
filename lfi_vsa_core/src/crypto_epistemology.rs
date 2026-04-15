@@ -165,7 +165,11 @@ impl EpistemicLedger {
         debuglog!("EpistemicLedger::verify: Recomputing commitment hash...");
 
         let recomputed = Self::compute_hash(&witness.belief_data, &witness.nonce, witness.timestamp);
-        let valid = recomputed == commitment.commitment_hash;
+        // Hash check AND timestamp consistency check. Without the second
+        // check, a tampered commitment.timestamp would slide through
+        // (verify only used witness.timestamp for the hash recompute).
+        let timestamps_match = commitment.timestamp == witness.timestamp;
+        let valid = recomputed == commitment.commitment_hash && timestamps_match;
 
         debuglog!("EpistemicLedger::verify: original={}, recomputed={}, valid={}",
             hex_str(&commitment.commitment_hash), hex_str(&recomputed), valid);
@@ -439,5 +443,79 @@ mod tests {
         let (commitment, witness) = ledger.reveal(idx).unwrap();
         let result = EpistemicLedger::verify(&commitment, &witness);
         assert!(result.valid, "Fixed-timestamp commitment should verify");
+    }
+
+    // ============================================================
+    // Stress / invariant tests for EpistemicLedger
+    // ============================================================
+
+    /// INVARIANT: every committed belief must self-verify via reveal+verify.
+    #[test]
+    fn invariant_every_commit_self_verifies() {
+        let mut ledger = EpistemicLedger::new();
+        for i in 0..50 {
+            let b = HyperMemory::from_string(&format!("belief_{}", i), DIM_PROLETARIAT);
+            let idx = ledger.commit_belief(&b, &format!("label_{}", i));
+            let (c, w) = ledger.reveal(idx).expect("reveal");
+            let r = EpistemicLedger::verify(&c, &w);
+            assert!(r.valid, "commit #{} failed self-verification", i);
+        }
+    }
+
+    /// INVARIANT: distinct beliefs always produce distinct commitment hashes.
+    #[test]
+    fn invariant_distinct_beliefs_distinct_hashes() {
+        let mut ledger = EpistemicLedger::new();
+        let mut seen = std::collections::HashSet::new();
+        for i in 0..100 {
+            let b = HyperMemory::from_string(&format!("unique_{}", i), DIM_PROLETARIAT);
+            let idx = ledger.commit_belief(&b, &format!("u_{}", i));
+            let hash = ledger.commitments[idx].commitment_hash;
+            assert!(seen.insert(hash),
+                "duplicate hash detected at iter {}: {:?}", i, hash);
+        }
+    }
+
+    /// INVARIANT: compute_hash is deterministic — same belief+nonce+timestamp
+    /// inputs always produce the same hash. (commit_belief_at uses random
+    /// nonces so two commits of the same belief differ by design.)
+    #[test]
+    fn invariant_compute_hash_is_deterministic() {
+        // Use the verify path to indirectly test compute_hash determinism.
+        let mut ledger = EpistemicLedger::new();
+        let belief = HyperMemory::from_string("hash_det", DIM_PROLETARIAT);
+        let idx = ledger.commit_belief_at(&belief, "h", 1700000000);
+        let (c, w) = ledger.reveal(idx).expect("reveal");
+        // Verify twice — both must agree.
+        let r1 = EpistemicLedger::verify(&c, &w);
+        let r2 = EpistemicLedger::verify(&c, &w);
+        assert!(r1.valid && r2.valid);
+        assert_eq!(r1.recomputed_hash, r2.recomputed_hash,
+            "compute_hash must be deterministic across calls");
+    }
+
+    /// INVARIANT: tampered timestamp is actively rejected (not silently passed).
+    #[test]
+    fn invariant_timestamp_tamper_rejected() {
+        let mut ledger = EpistemicLedger::new();
+        let belief = HyperMemory::from_string("tamper_target", DIM_PROLETARIAT);
+        let idx = ledger.commit_belief_at(&belief, "ts_tamper", 1700000000);
+
+        let (mut commitment, witness) = ledger.reveal(idx).unwrap();
+        commitment.timestamp += 1;
+        let r = EpistemicLedger::verify(&commitment, &witness);
+        assert!(!r.valid, "verifier must reject timestamp tampering");
+    }
+
+    /// INVARIANT: commitment count grows monotonically by exactly 1 per commit.
+    #[test]
+    fn invariant_commitments_count_monotonic() {
+        let mut ledger = EpistemicLedger::new();
+        let initial = ledger.commitments.len();
+        for i in 0..30 {
+            let b = HyperMemory::from_string(&format!("mono_{}", i), DIM_PROLETARIAT);
+            ledger.commit_belief(&b, &format!("m_{}", i));
+            assert_eq!(ledger.commitments.len(), initial + i + 1);
+        }
     }
 }
