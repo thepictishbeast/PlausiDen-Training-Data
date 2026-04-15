@@ -197,7 +197,10 @@ impl SecretScanner {
             while let Some(idx) = text[start..].find(prefix) {
                 let abs = start + idx;
                 let end = abs + prefix.len() + 36;
-                if end <= text.len() {
+                // SECURITY: end might land inside a multi-byte char even
+                // though abs is char-aligned (find returns boundary-safe
+                // positions). Guard before slicing.
+                if end <= text.len() && text.is_char_boundary(end) {
                     let slice = &text[abs..end];
                     if slice.chars().skip(prefix.len())
                         .all(|c| c.is_ascii_alphanumeric() || c == '_') {
@@ -402,11 +405,17 @@ impl SecretScanner {
             while let Some(idx) = text[start..].find(scheme) {
                 let abs = start + idx;
                 let rest = &text[abs..];
-                // Stop at whitespace, quote, or newline
+                // Stop at whitespace, quote, or newline.
+                // BUG ASSUMPTION: previously used .chars().count() which gave
+                // a char count and then byte-sliced with it — wrong for
+                // any URL containing multi-byte chars (which a malformed
+                // database URL might). Now we sum byte lengths so the
+                // resulting offset is a valid char boundary by construction.
                 let end_offset: usize = rest.chars()
                     .take_while(|c| !c.is_whitespace() && *c != '"' && *c != '\'' && *c != '\n')
-                    .count();
-                if end_offset > scheme.len() + 5 {
+                    .map(|c| c.len_utf8())
+                    .sum();
+                if end_offset > scheme.len() + 5 && end_offset <= rest.len() {
                     let matched = &rest[..end_offset];
                     // Only flag if contains '@' (credentials present)
                     if matched.contains('@') {
@@ -952,5 +961,30 @@ mod tests {
         let scanner = SecretScanner::new();
         let input = "card é 4532-0151-1283-0366 ω trailing";
         let _matches = scanner.scan(input);
+    }
+
+    #[test]
+    fn test_detect_db_url_does_not_panic_on_multibyte() {
+        // Database URLs are usually ASCII but malformed input might
+        // contain multi-byte chars. Must not panic.
+        let scanner = SecretScanner::new();
+        let inputs: Vec<String> = vec![
+            "postgres://userω:passé@host/db".into(),
+            "mysql://admin:🔐pass@server".into(),
+            "mongodb://αβγ:secret@db".into(),
+        ];
+        for input in &inputs {
+            let _ = scanner.scan(input);
+        }
+    }
+
+    #[test]
+    fn test_detect_github_token_does_not_panic_on_multibyte() {
+        // The GitHub token detector reads 36 bytes after a prefix.
+        // If multi-byte chars sit at the +36 boundary, panic risk.
+        let scanner = SecretScanner::new();
+        // Padding to push the multi-byte char near the boundary.
+        let input = format!("ghp_{}ω more text", "x".repeat(35));
+        let _ = scanner.scan(&input);
     }
 }
