@@ -761,12 +761,16 @@ impl InferenceTrainer {
                 "-X", "POST",
                 &format!("{}/api/generate", host),
                 "-H", "Content-Type: application/json",
-                // Stronger prompt: force terse canonical-form answers.
-                // Empirically this lifts accuracy on classification-style
-                // questions by ~10pp by making the model emit the label
-                // (e.g. "XSS", "BENIGN") instead of a paragraph.
+                // PROMPT TUNING HISTORY:
+                //   - "Answer concisely" + temp 0.3 + num_predict 200 → 73-74% on 100-ex set
+                //   - Aggressive "respond with ONLY the label" + temp 0.1 → 55%
+                //     (model labelled everything in caps, lost descriptive answers)
+                // Reverted to a middle ground: short-answer hint without
+                // forcing label-only mode. Lets the verbose-semantic
+                // verifier (added in commit fc82e7c) catch long-form
+                // correct answers without losing descriptive content.
                 "-d", &format!(
-                    r#"{{"model":"{}","prompt":"Give the shortest correct answer. If the question asks for a category or label, respond with ONLY that label (e.g. \"XSS\", \"BENIGN\", \"PROMPT_INJECTION\") — no explanation. If it asks for a value, respond with ONLY the value. Question: {}","stream":false,"options":{{"temperature":0.1,"num_predict":150}}}}"#,
+                    r#"{{"model":"{}","prompt":"Answer concisely. Give the answer first, then optional brief context. Question: {}","stream":false,"options":{{"temperature":0.2,"num_predict":200}}}}"#,
                     model, safe_prompt
                 ),
             ])
