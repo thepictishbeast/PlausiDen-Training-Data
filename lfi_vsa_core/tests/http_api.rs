@@ -210,6 +210,40 @@ async fn test_metrics_endpoint_returns_200_and_text_plain() {
     let _text = std::str::from_utf8(&bytes).expect("utf8");
 }
 
+/// GET /api/agent/state returns the consolidated dashboard view.
+#[tokio::test]
+async fn test_agent_state_returns_consolidated_summary() {
+    let app = lfi_vsa_core::api::create_router().expect("router");
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/agent/state")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .expect("request");
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = response.into_body().collect().await.unwrap().to_bytes();
+    let json: Value = serde_json::from_slice(&bytes).expect("valid JSON");
+
+    // All four sections must be present.
+    assert!(json.get("psl").is_some(), "missing psl section");
+    assert!(json.get("knowledge").is_some(), "missing knowledge section");
+    assert!(json.get("provenance").is_some(), "missing provenance section");
+    assert!(json.get("agent").is_some(), "missing agent section");
+
+    // PSL has at least the 5 default axioms.
+    assert!(json["psl"]["axiom_count"].as_u64().unwrap() >= 5);
+    // Knowledge has the seeded concepts.
+    assert!(json["knowledge"]["concept_count"].as_u64().unwrap() > 5);
+    // Provenance starts empty.
+    assert_eq!(json["provenance"]["trace_count"].as_u64().unwrap(), 0);
+    // Agent starts unauthenticated.
+    assert_eq!(json["agent"]["authenticated"].as_bool().unwrap(), false);
+}
+
 /// POST /api/opsec/scan sanitizes input and reports matches.
 #[tokio::test]
 async fn test_opsec_scan_redacts_sensitive_text() {

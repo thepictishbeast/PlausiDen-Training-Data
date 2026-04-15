@@ -506,6 +506,47 @@ async fn audit_handler(
 }
 
 // ============================================================
+// REST: Agent State Snapshot
+// ============================================================
+
+/// GET /api/agent/state — single-call dashboard summary.
+///
+/// Aggregates everything a monitoring dashboard normally needs into
+/// one round-trip: subsystem readiness, axiom inventory, knowledge
+/// stats, provenance counters. Cheaper than fan-out across
+/// /api/health + /api/knowledge/concepts + /api/provenance/stats.
+async fn agent_state_handler(
+    State(state): State<Arc<AppState>>,
+) -> impl IntoResponse {
+    let agent = state.agent.lock();
+    let axiom_count = agent.supervisor.axiom_count();
+    let concept_count = agent.reasoner.knowledge.concept_count();
+    let due_count = agent.reasoner.knowledge.concepts_due_for_review(usize::MAX).len();
+    let trace_count = agent.provenance.lock().trace_count();
+    let current_tier = format!("{:?}", agent.current_tier);
+    let authenticated = agent.authenticated;
+
+    Json(json!({
+        "psl": {
+            "axiom_count": axiom_count,
+            "material_trust_threshold": agent.supervisor.material_trust_threshold,
+            "hard_fail_threshold": agent.supervisor.hard_fail_threshold,
+        },
+        "knowledge": {
+            "concept_count": concept_count,
+            "due_for_review": due_count,
+        },
+        "provenance": {
+            "trace_count": trace_count,
+        },
+        "agent": {
+            "authenticated": authenticated,
+            "current_tier": current_tier,
+        }
+    }))
+}
+
+// ============================================================
 // REST: Health Check
 // ============================================================
 
@@ -900,6 +941,7 @@ pub fn create_router() -> Result<Router, Box<dyn std::error::Error>> {
         .route("/api/qos", get(qos_handler))
         .route("/api/health", get(health_handler))
         .route("/api/metrics", get(metrics_handler))
+        .route("/api/agent/state", get(agent_state_handler))
         .route("/api/think", post(think_handler))
         .route("/api/audit", post(audit_handler))
         .route("/api/opsec/scan", post(opsec_scan_handler))
