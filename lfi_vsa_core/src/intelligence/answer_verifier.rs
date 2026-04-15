@@ -455,6 +455,38 @@ impl AnswerNormalizer {
         false
     }
 
+    /// Lightweight English stemmer — strips common suffixes so
+    /// "reproduce" and "reproduction" collapse to the same stem.
+    /// Not a real Porter stemmer; just enough to lift fuzzy keyword
+    /// overlap on cases where the LLM uses a different inflection
+    /// of the canonical answer's keywords.
+    pub fn stem(word: &str) -> String {
+        let lower = word.to_lowercase();
+        // Order matters: longest suffixes first so "ization" doesn't
+        // get clipped to just "tion".
+        let suffixes = [
+            "ization", "izations", "isation", "isations",
+            "ification", "ifications",
+            "tions", "tion", "sions", "sion",
+            "ments", "ment",
+            "ness", "ously", "ously",
+            "ing", "ings", "ies", "ied",
+            "es", "ed", "er", "ly", "s",
+        ];
+        for suf in &suffixes {
+            if lower.len() > suf.len() + 2 && lower.ends_with(suf) {
+                return lower[..lower.len() - suf.len()].to_string();
+            }
+        }
+        // Final pass: strip a trailing silent 'e' (reproduce → reproduc,
+        // produce → produc) so it collides with -tion forms that already
+        // dropped the suffix.
+        if lower.len() > 4 && lower.ends_with('e') {
+            return lower[..lower.len() - 1].to_string();
+        }
+        lower
+    }
+
     /// Word-to-number: "five" → "5".
     pub fn word_to_number(s: &str) -> String {
         let mappings = [
@@ -608,16 +640,17 @@ impl AnswerVerifier {
             }
         }
 
-        // 7. Fuzzy keyword overlap (includes short/alphanumeric tokens).
+        // 7. Fuzzy keyword overlap. Tokens are stemmed so "reproduce"
+        //    matches "reproduction", "evolve" matches "evolution", etc.
         let ans_words: std::collections::HashSet<String> = ans_norm
             .split(|c: char| !c.is_alphanumeric())
             .filter(|w| !w.is_empty())
-            .map(|s| s.to_string())
+            .map(AnswerNormalizer::stem)
             .collect();
         let exp_words: std::collections::HashSet<String> = exp_norm
             .split(|c: char| !c.is_alphanumeric())
             .filter(|w| !w.is_empty() && w.len() > 1)
-            .map(|s| s.to_string())
+            .map(AnswerNormalizer::stem)
             .collect();
 
         if !exp_words.is_empty() {
@@ -1006,6 +1039,20 @@ mod tests {
         assert!(r.is_correct,
             "markdown-bold answer containing exact expected must pass: mode={:?}",
             r.matched_mode);
+    }
+
+    #[test]
+    fn test_stem_normalizes_inflections() {
+        // Suffixes the stemmer should strip.
+        assert_eq!(AnswerNormalizer::stem("reproduction"), "reproduc");
+        assert_eq!(AnswerNormalizer::stem("reproduce"), "reproduc");
+        assert_eq!(AnswerNormalizer::stem("evolved"), "evolv");
+        assert_eq!(AnswerNormalizer::stem("evolution"), "evolu");
+        assert_eq!(AnswerNormalizer::stem("organisms"), "organism");
+        assert_eq!(AnswerNormalizer::stem("running"), "runn");
+        // Short words are left alone.
+        assert_eq!(AnswerNormalizer::stem("be"), "be");
+        assert_eq!(AnswerNormalizer::stem("at"), "at");
     }
 
     #[test]
