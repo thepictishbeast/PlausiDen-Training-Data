@@ -1,57 +1,57 @@
 {
   "social": {
-    "sessions": 30,
-    "total_examples": 2750,
-    "last_trained": 1776344111
+    "sessions": 34,
+    "total_examples": 2950,
+    "last_trained": 1776348416
   },
   "code": {
-    "sessions": 29,
-    "total_examples": 2700,
-    "last_trained": 1776342685
+    "sessions": 34,
+    "total_examples": 2950,
+    "last_trained": 1776348477
   },
   "sales": {
-    "sessions": 29,
-    "total_examples": 2700,
-    "last_trained": 1776342746
+    "sessions": 34,
+    "total_examples": 2950,
+    "last_trained": 1776348537
   },
   "math": {
-    "sessions": 29,
-    "total_examples": 2700,
-    "last_trained": 1776342911
+    "sessions": 34,
+    "total_examples": 2950,
+    "last_trained": 1776348598
   },
   "biology": {
-    "sessions": 29,
-    "total_examples": 2700,
-    "last_trained": 1776343011
+    "sessions": 34,
+    "total_examples": 2950,
+    "last_trained": 1776348659
   },
   "security": {
-    "sessions": 29,
-    "total_examples": 2700,
-    "last_trained": 1776343166
+    "sessions": 34,
+    "total_examples": 2950,
+    "last_trained": 1776348719
   },
   "language": {
-    "sessions": 29,
-    "total_examples": 2700,
-    "last_trained": 1776343227
+    "sessions": 34,
+    "total_examples": 2950,
+    "last_trained": 1776348782
   },
   "philosophy": {
-    "sessions": 29,
-    "total_examples": 2700,
-    "last_trained": 1776343312
+    "sessions": 34,
+    "total_examples": 2950,
+    "last_trained": 1776348843
   },
   "chemistry": {
-    "sessions": 29,
-    "total_examples": 2700,
-    "last_trained": 1776343398
+    "sessions": 34,
+    "total_examples": 2950,
+    "last_trained": 1776348904
   },
   "psychology": {
-    "sessions": 29,
-    "total_examples": 2700,
-    "last_trained": 1776343521
+    "sessions": 34,
+    "total_examples": 2950,
+    "last_trained": 1776348964
   },
   "physics": {
-    "sessions": 29,
-    "total_examples": 2700,
-    "last_trained": 1776343782
+    "sessions": 33,
+    "total_examples": 2900,
+    "last_trained": 1776348356
   }
 }
