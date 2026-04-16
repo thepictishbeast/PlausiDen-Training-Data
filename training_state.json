@@ -1,0 +1,57 @@
+{
+  "social": {
+    "sessions": 30,
+    "total_examples": 2750,
+    "last_trained": 1776344111
+  },
+  "code": {
+    "sessions": 29,
+    "total_examples": 2700,
+    "last_trained": 1776342685
+  },
+  "sales": {
+    "sessions": 29,
+    "total_examples": 2700,
+    "last_trained": 1776342746
+  },
+  "math": {
+    "sessions": 29,
+    "total_examples": 2700,
+    "last_trained": 1776342911
+  },
+  "biology": {
+    "sessions": 29,
+    "total_examples": 2700,
+    "last_trained": 1776343011
+  },
+  "security": {
+    "sessions": 29,
+    "total_examples": 2700,
+    "last_trained": 1776343166
+  },
+  "language": {
+    "sessions": 29,
+    "total_examples": 2700,
+    "last_trained": 1776343227
+  },
+  "philosophy": {
+    "sessions": 29,
+    "total_examples": 2700,
+    "last_trained": 1776343312
+  },
+  "chemistry": {
+    "sessions": 29,
+    "total_examples": 2700,
+    "last_trained": 1776343398
+  },
+  "psychology": {
+    "sessions": 29,
+    "total_examples": 2700,
+    "last_trained": 1776343521
+  },
+  "physics": {
+    "sessions": 29,
+    "total_examples": 2700,
+    "last_trained": 1776343782
+  }
+}
