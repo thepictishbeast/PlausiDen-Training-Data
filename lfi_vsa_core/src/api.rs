@@ -267,9 +267,34 @@ async fn handle_chat_socket(mut socket: WebSocket, state: Arc<AppState>) {
                         }
                     }
 
+                    // EXPERIENCE LEARNING: Detect corrections from user input.
+                    // Patterns: "that's wrong", "no, it's...", "actually...",
+                    // "you're wrong", "incorrect", "not right"
+                    let correction_patterns = [
+                        "that's wrong", "thats wrong", "you're wrong", "youre wrong",
+                        "no, it's", "no its", "actually,", "actually ",
+                        "incorrect", "not right", "not correct", "wrong answer",
+                        "that is wrong", "you are wrong", "no that's",
+                    ];
+                    let is_correction = correction_patterns.iter()
+                        .any(|p| lower.starts_with(p) || (lower.len() < 100 && lower.contains(p)));
+                    if is_correction {
+                        use crate::intelligence::experience_learning::{LearningSignal, SignalType};
+                        state.experience.lock().capture(LearningSignal {
+                            signal_type: SignalType::Correction,
+                            user_input: input.to_string(),
+                            system_response: String::new(), // Previous response not available here
+                            correction: Some(input.to_string()),
+                            conversation_id: None,
+                            timestamp: std::time::SystemTime::now()
+                                .duration_since(std::time::UNIX_EPOCH)
+                                .map(|d| d.as_secs()).unwrap_or(0),
+                        });
+                    }
+
                     // RAG: Query brain.db for relevant facts and inject into agent
                     // SUPERSOCIETY: This is the core intelligence mechanism —
-                    // 51M+ facts grounding every response through retrieval.
+                    // 52M+ facts grounding every response through retrieval.
                     let rag_facts = state.db.search_facts(input, 5);
                     agent.rag_context = rag_facts;
 
