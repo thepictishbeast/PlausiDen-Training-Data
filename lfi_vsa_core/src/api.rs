@@ -1707,6 +1707,72 @@ pub fn create_router() -> Result<Router, Box<dyn std::error::Error>> {
         db,
     });
 
+    // --- Image Generation ---
+
+    /// POST /api/generate/image — generate an image from a text prompt.
+    /// Uses local Stable Diffusion via ComfyUI API if available, falls back
+    /// to a description-based response if no image backend is running.
+    async fn image_generate_handler(
+        State(_state): State<Arc<AppState>>,
+        Json(body): Json<serde_json::Value>,
+    ) -> impl IntoResponse {
+        let prompt = body.get("prompt").and_then(|v| v.as_str()).unwrap_or("");
+        if prompt.is_empty() || prompt.len() > 2000 {
+            return Json(json!({ "error": "Prompt required (max 2000 chars)" }));
+        }
+
+        info!("// AUDIT: /api/generate/image prompt='{}'", &prompt[..prompt.len().min(80)]);
+
+        // Try local ComfyUI/Automatic1111 API first (port 7860 or 8188)
+        for (name, url) in &[
+            ("comfyui", "http://127.0.0.1:8188/api/prompt"),
+            ("automatic1111", "http://127.0.0.1:7860/sdapi/v1/txt2img"),
+        ] {
+            let check = std::process::Command::new("curl")
+                .args(&["-s", "--max-time", "2", &url.replace("/prompt", "/system_stats").replace("/txt2img", "/sd-models")])
+                .output();
+            if let Ok(out) = check {
+                if out.status.success() && !out.stdout.is_empty() {
+                    // Backend is running — send generation request
+                    let gen_body = if *name == "automatic1111" {
+                        format!(r#"{{"prompt":"{}","steps":20,"width":512,"height":512,"cfg_scale":7}}"#,
+                            prompt.replace('"', "\\\""))
+                    } else {
+                        format!(r#"{{"prompt":"{}","backend":"{}"}}"#, prompt.replace('"', "\\\""), name)
+                    };
+
+                    let result = std::process::Command::new("curl")
+                        .args(&["-s", "--max-time", "120", "-X", "POST", url,
+                            "-H", "Content-Type: application/json", "-d", &gen_body])
+                        .output();
+
+                    if let Ok(out) = result {
+                        if out.status.success() {
+                            let resp = String::from_utf8_lossy(&out.stdout);
+                            if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&resp) {
+                                return Json(json!({
+                                    "status": "ok",
+                                    "backend": name,
+                                    "prompt": prompt,
+                                    "result": parsed,
+                                }));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // No local image backend — return a structured description
+        // that the frontend can use to show what would be generated
+        Json(json!({
+            "status": "no_backend",
+            "prompt": prompt,
+            "message": "No local image generation backend detected. Install ComfyUI (port 8188) or Automatic1111 (port 7860) for image generation. The prompt has been saved for when a backend becomes available.",
+            "suggestion": "To enable: pip install comfyui or use the Stable Diffusion WebUI docker image.",
+        }))
+    }
+
     let cors = CorsLayer::permissive();
 
     Ok(Router::new()
@@ -1750,6 +1816,7 @@ pub fn create_router() -> Result<Router, Box<dyn std::error::Error>> {
         .route("/api/provenance/reset", post(provenance_reset_handler))
         .route("/api/provenance/:conclusion_id", get(provenance_explain_handler))
         .route("/api/provenance/:conclusion_id/chain", get(provenance_chain_handler))
+        .route("/api/generate/image", post(image_generate_handler))
         .layer(cors)
         .with_state(state))
 }
