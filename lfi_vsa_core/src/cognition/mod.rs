@@ -27,3 +27,4 @@ pub use active_inference::ActiveInferenceCore;
 pub use metacognitive::{MetaCognitiveProfiler, CognitiveDomain, PerformanceRecord, ImprovementTarget};
 pub use knowledge_compiler::{KnowledgeCompiler, AccelerationMetrics, CompiledEntry};
 pub use spaced_repetition::{SpacedRepetitionScheduler, ReviewCard};
+pub mod grokking_monitor;
