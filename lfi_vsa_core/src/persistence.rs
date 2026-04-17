@@ -188,13 +188,15 @@ impl BrainDb {
         let fts_query = keywords.join(" ");
         let mut results = Vec::new();
 
-        // FTS5 path — uses BM25 ranking
+        // FTS5 path — BM25 ranking weighted by quality_score.
+        // SUPERSOCIETY: Curated high-quality facts (0.95) surface above
+        // bulk web text (0.65). This is what makes RAG useful.
         let mut stmt = match conn.prepare(
             "SELECT f.key, f.value, COALESCE(f.quality_score, f.confidence, 0.5) \
              FROM facts f \
              JOIN facts_fts ON f.rowid = facts_fts.rowid \
              WHERE facts_fts MATCH ?1 \
-             ORDER BY rank \
+             ORDER BY rank / COALESCE(f.quality_score, f.confidence, 0.5) \
              LIMIT ?2"
         ) {
             Ok(s) => s,
