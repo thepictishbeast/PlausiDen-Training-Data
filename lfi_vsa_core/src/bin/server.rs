@@ -22,3 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     Ok(())
 }
+
+// NOTE: Logging is configured via tracing-subscriber in main()
+// Logs go to both stdout AND /var/log/lfi/server.log
+// TODO: Add rolling file appender for rotation

@@ -28,6 +28,7 @@
 //! - crate::hdc::error (error types)
 
 use crate::hdc::error::HdcError;
+use tracing::info;
 use std::collections::{HashMap, HashSet, VecDeque};
 
 /// A directed causal relationship: cause → effect.
@@ -103,6 +104,7 @@ impl CausalGraph {
     /// BUG ASSUMPTION: cycle detection traverses up to 100 nodes deep.
     /// Deeper cycles are not detected. This is a pragmatic limit.
     pub fn add_edge(&mut self, edge: CausalEdge) -> Result<(), HdcError> {
+        info!(cause = %edge.cause, effect = %edge.effect, strength = edge.strength, "Causal edge added");
         // Check for direct self-causation
         if edge.cause == edge.effect {
             return Err(HdcError::LogicFault {

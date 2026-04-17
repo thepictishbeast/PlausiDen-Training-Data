@@ -2054,11 +2054,17 @@ pub fn create_router() -> Result<Router, Box<dyn std::error::Error>> {
     // Training admin: sessions overview
     // AVP-PASS-13: 2026-04-16 — training admin dashboard API
     async fn admin_training_sessions_handler() -> impl IntoResponse {
-        // Read training state file
+        info!("// ADMIN: Training sessions endpoint accessed");
         let state_path = "/var/log/lfi/training_state.json";
         let state: serde_json::Value = match std::fs::read_to_string(state_path) {
-            Ok(s) => serde_json::from_str(&s).unwrap_or(json!({})),
-            Err(_) => json!({"error": "training_state.json not found"}),
+            Ok(s) => {
+                info!("// ADMIN: Loaded training state from {}", state_path);
+                serde_json::from_str(&s).unwrap_or(json!({}))
+            },
+            Err(e) => {
+                warn!("// ADMIN: training_state.json not found: {}", e);
+                json!({"error": "training_state.json not found"})
+            },
         };
         axum::Json(json!({
             "training_state": state,
@@ -2135,6 +2141,7 @@ pub fn create_router() -> Result<Router, Box<dyn std::error::Error>> {
     }
 
     // Training admin: start/stop training
+    // SECURITY: Auth guard should be applied via middleware — see lfi_api.rs require_auth
     async fn admin_training_control_handler(
         axum::extract::Path(action): axum::extract::Path<String>,
     ) -> impl IntoResponse {
