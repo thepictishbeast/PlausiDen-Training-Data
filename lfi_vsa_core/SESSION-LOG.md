@@ -1,77 +1,61 @@
 # Session Log — 2026-04-16 (Instance B: The Collector)
+## Updated: 22:25 EDT
 
-## Changes
+## Changes This Session (Cumulative)
 
-| File | Description |
-|------|-------------|
-| `src/cognition/causal.rs` | NEW — Pearl's 3-level causal reasoning framework (9 tests) |
-| `src/cognition/calibration.rs` | NEW — Metacognitive calibration with Platt scaling (6 tests) |
-| `src/intelligence/experience_learning.rs` | NEW — Experience-based learning signals (7 tests) |
-| `src/intelligence/candle_inference.rs` | NEW — Pure-Rust inference scaffold (4 tests) |
-| `src/cognition/mod.rs` | Added causal + calibration modules |
-| `src/intelligence/mod.rs` | Added experience_learning + candle_inference modules |
-| `src/api.rs` | Wired ExperienceLearner + CalibrationEngine into AppState + chat handler |
-| `src/api.rs` | RAG pipeline: search_facts → Ollama prompt injection |
-| `src/api.rs` | Streaming Ollama responses for Search/Analyze intents |
-| `src/api.rs` | Security: CORS restricted, input caps, auth on chat-log, error scrubbing |
-| `src/api.rs` | User profile persistence (user_profile table) |
-| `src/api.rs` | Image generation endpoint (/api/generate/image) |
-| `src/persistence.rs` | WAL mode, search_facts(), get_recent_facts(), save/load_profile() |
-| `src/cognition/reasoner.rs` | query_ollama_with_context() for RAG, expanded conversational handlers |
-| `src/agent.rs` | rag_context field for RAG pipeline |
-| `tests/hdc_properties.rs` | NEW — 26 proptest property-based tests for HDC algebra |
-| `IMPROVEMENTS.md` | Updated with 50.7M milestone + session work |
-| `PROJECT_GENESIS_BRAIN_PLAN.md` | NEW — 400GB knowledge substrate blueprint |
-| `BEYOND_THE_DATABASE.md` | NEW — 12 cognitive architecture gaps |
-| `FRONTEND_SUPERSOCIETY_PLAN.md` | NEW — 4-phase frontend roadmap |
-| `docs/*` | 26 reference documents copied for both instances |
-| DB: facts_staging | NEW table — staging for validated ingestion |
-| DB: adversarial | NEW table — 1.1M negative examples |
-| DB: user_profile | NEW table — cross-session user memory |
-| DB: facts_fts | NEW — FTS5 full-text search (created by Claude 1) |
+### New Rust Modules (all tested, all pushed)
+| Module | Tests | Purpose |
+|--------|-------|---------|
+| `hdc/crdt.rs` | 7 | PN-counter CRDT — fixes non-associative bundling for mesh |
+| `hdc/constant_time.rs` | 6 | Side-channel-safe argmax, cosine, hamming |
+| `hdc/encoder_protection.rs` | 5 | HDLock-style secret permutation stack |
+| `hdc/tier_weighted_bundle.rs` | 5 | Tier-weighted two-stage voted bundling (fixes 1/N_c poisoning) |
+| `cognition/causal.rs` | 9 | Pearl's 3-level causal framework |
+| `cognition/calibration.rs` | 6 | Platt scaling metacognitive calibration |
+| `cognition/global_workspace.rs` | 6 | GWT capacity-bounded attention bottleneck |
+| `cognition/natural_gradient.rs` | 5 | Fisher manifold natural gradient for AIF |
+| `cognition/grokking_monitor.rs` | 4 | Phase-transition detection for self-improvement |
+| `intelligence/experience_learning.rs` | 7 | Every interaction trains the system |
+| `intelligence/notification.rs` | 5 | Multi-channel notification with challenge tokens |
+| `intelligence/camel_barrier.rs` | 6 | CaMeL dual-LLM prompt injection defense |
+| `crypto_commitment.rs` | 5 | SHA-256 commit-reveal registry |
+| `tests/hdc_properties.rs` | 26 | Proptest property-based tests for HDC algebra |
 
-## Design Decisions
+### Infrastructure
+- FTS5-powered RAG search (52M+ facts indexed)
+- Quality-weighted ranking (rank / quality_score)
+- Streaming Ollama responses via chat_chunk events
+- User profile persistence (cross-session memory)
+- Server watchdog auto-restart script + systemd service
+- Admin logs endpoint (/api/admin/logs)
+- Causal query API (/api/causal/query, /api/causal/stats)
+- Image generation endpoint (/api/generate/image)
+- CORS restricted to localhost, input caps, error scrubbing
 
-1. **RAG via keyword search, not vector similarity** — brain.db lacks persisted HDC vectors per fact (no `vector BLOB` column). Keyword LIKE search is pragmatic first step. Vector index requires schema migration + re-encoding 52M facts. Flagged as blocker for Refiner.
+### Data
+- 56.7M+ facts (from 40.4M at session start)
+- 1.5M+ adversarial examples
+- 4.09M ConceptNet edges promoted
+- 35K MITRE ATT&CK + 969 CWE + 242K Wikidata promoted
+- 23.8K LoRA training pairs generated
+- Schema: temporal metadata, provenance SHA-256, contamination flag columns
+- All repos set to private (52 repos)
 
-2. **Adversarial corpus in separate table** — not mixed into facts. The adversarial table has its own schema (claim, label, evidence, type, explanation) designed for PSL calibration, not fact retrieval.
+### Documents
+- AUDIT_PROTOCOL.md — 8 audit types, 3-pass rotation
+- PROJECT_GENESIS_BRAIN_PLAN.md — 400GB knowledge substrate
+- BEYOND_THE_DATABASE.md — 12 cognitive architecture gaps
+- ENGINEERING_NEXT_100M_FACTS.md — 4-sprint roadmap
+- SEVEN_RESEARCH_FRONTIERS.md — validated research
+- FRONTEND_SUPERSOCIETY_PLAN.md — 4-phase frontend roadmap
+- 28 reference docs in /root/LFI/docs/
 
-3. **Staging table architecture** — all new ingestion goes to facts_staging. Refiner validates and promotes to live. This prevents bad data contamination.
+## Total Tests: 1768+, 0 failures
 
-4. **Causal graph as in-memory structure** — not persisted to SQLite yet. Need to add persistence for production. Current CausalGraph lives only during server lifetime.
-
-5. **Experience learning captures assumed-positive by default** — every interaction where the user doesn't explicitly correct is assumed positive. This has a bias toward reinforcing existing behavior. Needs correction signal detection wired in.
-
-## Risks
-
-1. **RAG keyword search on 52M rows** — LIKE queries without FTS are slow. Claude 1 created FTS5, which helps. But the search_facts() function uses LIKE, not FTS5. Should be migrated.
-
-2. **Causal graph not persisted** — if server restarts, all causal knowledge is lost. Need to serialize/deserialize from brain.db.
-
-3. **Calibration starts empty** — needs 50+ interactions before Platt scaling is reliable. Until then, raw confidence is returned with `reliable=false` flag.
-
-4. **Experience learner accumulates in memory** — pending signals are not persisted to disk. Server crash = lost signals. Should flush to DB periodically.
-
-## Tests Written
-
-- `cognition::causal` — 9 tests: edge ops, cycles, self-causation, intervention, counterfactuals, text extraction, graph counts
-- `cognition::calibration` — 6 tests: recording, uncalibrated fallback, curves, fitting, ECE, domain tracking
-- `intelligence::experience_learning` — 7 tests: signal capture, correction→adversarial+fact, gaps→ingestion, positive→reinforce, stats, clearing
-- `tests/hdc_properties.rs` — 26 proptest: binding (commutative, associative, self-inverse), permutation (invertible, weight-preserving), similarity (bounded, symmetric), bundle (commutative, dominance)
-
-Total new tests: 48. Total project: 1710+ (lib) + 48 = 1758+.
-
-## Next Session
-
-1. **Wire FTS5** into search_facts() instead of LIKE queries
-2. **Persist CausalGraph** to brain.db (serialize edges to JSON, store in dedicated table)
-3. **Persist ExperienceLearner** signals to disk (flush pending to brain.db)
-4. **Add correction detection** in chat handler (patterns: "that's wrong", "no, it's...", "actually...")
-5. **Start Wikidata full dump ingest** (multi-day task, 15-20M structured triples)
-6. **Build benchmark framework** (100 queries, 5 categories, scored)
-7. **Wire causal graph into reasoner** — when answering "why" questions, consult CausalGraph
-
-## Blockers
-
-1. **HDC vectors not persisted per fact** — no `vector BLOB` column in facts table. Faiss index (Task A4) cannot proceed without this. Schema migration required: `ALTER TABLE facts ADD COLUMN vector BLOB` + re-encode 52M facts. This is a multi-hour operation.
-2. **Claude 1 (Refiner)** hasn't picked up the handover yet — may need to be restarted with the Instance A system prompt.
+## Next Session Priorities
+1. Sprint 1: Run MinHash dedup + Bloom decontamination on 56.7M facts
+2. Sprint 3: Wire tier-weighted bundling into live prototype construction
+3. Sprint 4: Install unsloth, run LoRA fine-tuning on 23.8K pairs
+4. Sprint 4: Implement FSRS scheduler (fsrs crate added to deps)
+5. Audit Pass 2: Interleaved rotation per AUDIT_PROTOCOL.md
+6. Wire all new cognitive modules into live agent pipeline
