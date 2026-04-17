@@ -576,7 +576,7 @@ async fn search_handler(
             }))
         }
         Err(e) => {
-            Json(json!({ "error": format!("{:?}", e) }))
+            Json(json!({ "error": "An internal error occurred.".to_string() }))
         }
     }
 }
@@ -989,7 +989,7 @@ async fn research_handler(
             Err(e) => {
                 all_sources.push(json!({
                     "query": query,
-                    "error": format!("{:?}", e),
+                    "error": "An internal error occurred.".to_string(),
                     "citation_index": i + 1,
                 }));
             }
