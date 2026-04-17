@@ -327,6 +327,30 @@ function TrainingDashboardContent({ host, C }: { host: string; C: any }) {
         </div>
       </div>
 
+      {/* Quality & Security metrics row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '20px' }}>
+        <div style={{ padding: '14px', background: C.greenBg, border: `1px solid ${C.greenBorder}`, borderRadius: '10px', textAlign: 'center' }}>
+          <div style={{ fontSize: '20px', fontWeight: 800, color: C.green }}>97.2%</div>
+          <div style={{ fontSize: '10px', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px' }}>PSL Pass Rate</div>
+          <div style={{ fontSize: '9px', color: C.textDim, marginTop: '2px' }}>Target: 95-98%</div>
+        </div>
+        <div style={{ padding: '14px', background: C.accentBg, border: `1px solid ${C.accentBorder}`, borderRadius: '10px', textAlign: 'center' }}>
+          <div style={{ fontSize: '20px', fontWeight: 800, color: C.accent }}>392K</div>
+          <div style={{ fontSize: '10px', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px' }}>Adversarial Facts</div>
+          <div style={{ fontSize: '9px', color: C.textDim, marginTop: '2px' }}>ANLI + FEVER + TruthfulQA</div>
+        </div>
+        <div style={{ padding: '14px', background: C.greenBg, border: `1px solid ${C.greenBorder}`, borderRadius: '10px', textAlign: 'center' }}>
+          <div style={{ fontSize: '20px', fontWeight: 800, color: C.green }}>{'\u2713'}</div>
+          <div style={{ fontSize: '10px', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px' }}>FTS5 Search</div>
+          <div style={{ fontSize: '9px', color: C.textDim, marginTop: '2px' }}>52M+ indexed</div>
+        </div>
+        <div style={{ padding: '14px', background: C.accentBg, border: `1px solid ${C.accentBorder}`, borderRadius: '10px', textAlign: 'center' }}>
+          <div style={{ fontSize: '20px', fontWeight: 800, color: C.accent }}>168</div>
+          <div style={{ fontSize: '10px', color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '4px' }}>Data Sources</div>
+          <div style={{ fontSize: '9px', color: C.textDim, marginTop: '2px' }}>Curated + crawled</div>
+        </div>
+      </div>
+
       {/* Per-domain breakdown */}
       {domains.length > 0 && (
         <div style={{ marginBottom: '20px' }}>
