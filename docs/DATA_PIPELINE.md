@@ -1,82 +1,36 @@
-# PlausiDen AI Data Pipeline
+# Data Pipeline — PlausiDen AI Training
 
-How training data flows from generation through validation to model training.
+## Flow: Generation → Validation → Training
 
-## Pipeline Stages
+### 1. Generation
+- **HuggingFace datasets**: ANLI, FEVER, OASST2, ConceptNet, etc.
+- **Direct generation**: Adversarial examples, domain gap fills
+- **Ollama synthesis**: Reasoning chains, multi-turn conversations
+- **Web crawl**: C4, OpenWebText (pre-existing)
 
-```
-[Data Sources] → [Generation] → [Validation] → [Storage] → [Training]
-```
+### 2. Staging (facts_staging table)
+- All new data goes to `facts_staging` first
+- Schema: key, value, source, confidence, domain, quality_score, validated, validation_notes
+- Structured fields: subject, predicate, object (for knowledge graphs)
 
-### Stage 1: Data Sources
-- **External datasets:** Dolly 15K, OASST2, CVE v5, Wikidata
-- **Ollama generation:** Magpie v2, conversational, domain-focused
-- **Hand-crafted:** Security tools, hardware, tool-use examples
-- **Brain.db derived:** Q&A pairs from 56M+ curated facts
+### 3. Validation
+- **Dedup check**: exact-match against existing facts
+- **Quality scoring**: 7 tiers from 0.60 (reviews) to 0.95 (curated)
+- **Contamination check**: FTS5-based overlap detection with benchmarks
+- **Length filter**: min 10 chars, max 10000 chars
+- **Domain classification**: 33 domains assigned
 
-### Stage 2: Generation
-Scripts in `/root/LFI/scripts/`:
-- `magpie_generate_v2.py` — Domain-focused instruction pairs via Ollama
-- `generate_conversational_data.py` — Multi-turn dialogue generation
-- `generate_security_training_data.py` — Linux/Kali/blue/red team data
-- `generate_hardware_training_data.py` — Serial/HID/USB training
-- `generate_tool_use_data.py` — OS navigation and tool-use examples
-- `parse_cve_v5.py` — CVE security vulnerability fact extraction
+### 4. Promotion
+- Validated facts promoted: INSERT INTO facts SELECT ... FROM facts_staging
+- FTS5 auto-indexed via triggers
+- Contaminated sources flagged (contam_flag=1)
 
-### Stage 3: Validation
-- Minimum length filtering (instruction >= 20, output >= 50)
-- SHA-256 deduplication
-- Generic greeting rejection
-- Domain balance checking
-- Contamination detection against benchmarks
+### 5. Training Export
+- **LoRA format**: instruction/input/output JSONL
+- **Current**: 52,640 pairs (v2), 13 MB
+- **Sources**: FEVER, ANLI, ConceptNet, MITRE, curated adversarial
 
-### Stage 4: Storage
-- JSONL files in `/home/user/LFI-data/`
-- Brain.db for live RAG (56M+ facts)
-- GitHub via git LFS for version control
-
-### Stage 5: Training
-- **LoRA/QLoRA:** Fine-tune qwen2.5-coder:7b on instruction pairs
-- **ORPO:** Preference optimization (reference-free)
-- **GRPO:** Reinforcement learning with verifiable rewards
-- **RAG:** FTS5 search → quality-weighted ranking → prompt injection
-
-## JSONL Format Standard
-
-### Single-turn (Alpaca format)
-```json
-{
-    "instruction": "User's question or request",
-    "input": "Optional additional context",
-    "output": "AI's response",
-    "source": "dataset_name",
-    "domain": "category"
-}
-```
-
-### Multi-turn (Conversation format)
-```json
-{
-    "conversations": [
-        {"role": "user", "content": "First message"},
-        {"role": "assistant", "content": "First response"},
-        {"role": "user", "content": "Follow-up"},
-        {"role": "assistant", "content": "Follow-up response"}
-    ],
-    "category": "task_completion",
-    "turns": 2,
-    "source": "conversational_training"
-}
-```
-
-### Tool-use (Extended format)
-```json
-{
-    "instruction": "Task description",
-    "input": "",
-    "output": "Response with command examples",
-    "tool_calls": [{"tool": "bash", "command": "actual command"}],
-    "source": "tool_use_training",
-    "domain": "category"
-}
-```
+### 6. Quality Monitoring
+- PSL calibration: 97.2% pass rate (target 95-98%)
+- Dedup rate: 0.72% after cleanup (363K deleted)
+- FTS5 in sync: verified 56.4M = 56.4M
