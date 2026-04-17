@@ -3,7 +3,7 @@
 # Restarts the server automatically if it crashes or stops responding.
 # Run: nohup bash /root/LFI/scripts/server_watchdog.sh &
 
-SERVER_BIN="/root/LFI/lfi_vsa_core/target/release/server"
+SERVER_BIN="/home/user/cargo-target/release/server"
 SERVER_DIR="/root/LFI/lfi_vsa_core"
 LOG="/tmp/lfi_server.log"
 CHECK_INTERVAL=10
