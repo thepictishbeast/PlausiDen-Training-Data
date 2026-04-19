@@ -86,3 +86,8 @@ Phase 5A work is uncommitted, awaiting Beta audit.
 3. **Phase 5D:** Remote GPU backend (`RemoteBackend`)
 4. **Phase 5E:** End-to-end sensorium integration test
 5. **Phase 6:** CARTA offensive probe framework
+
+## Narrative Framing
+Civil rights tool restoring the presumption of innocence. Use: "plausible deniability," "presumption of innocence," "forensic reliability," "data sovereignty," "surveillance resistance," "digital civil rights." Avoid: "hacking," "evasion," "anti-forensics," "hide," "trick," "fool."
+
+NEVER include personal political beliefs or ideology of any contributor in any file.
